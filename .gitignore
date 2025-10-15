@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+sora_cyoa_frames/
+sora_cyoa_videos/
+prebaked_content/
+.env
+.vscode/
+.DS_Store
