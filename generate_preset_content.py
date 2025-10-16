@@ -168,7 +168,7 @@ def build_tree(
             sora_prompt=scene["sora_prompt"],
             model=sora_model,
             size=video_size,
-            seconds=2,
+            seconds=DEFAULT_SECONDS,
             input_reference=parent_last_frame,
         )
         # copy into preset directory
