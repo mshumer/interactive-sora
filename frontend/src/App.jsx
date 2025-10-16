@@ -1,113 +1,225 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
-import ConfigScreen from "./components/ConfigScreen.jsx";
 import ExperienceScreen from "./components/ExperienceScreen.jsx";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const WORLD_ID = import.meta.env.VITE_WORLD_ID || "default";
+const API_KEY_STORAGE_KEY = "sora_shared_world_api_key";
 
 const api = axios.create({
   baseURL: API_BASE_URL || undefined,
 });
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const App = () => {
-  const [phase, setPhase] = useState("config");
-  const [sessionId, setSessionId] = useState(null);
+  const [worldInfo, setWorldInfo] = useState(null);
   const [story, setStory] = useState([]);
-  const [stepCount, setStepCount] = useState(0);
-  const [maxSteps, setMaxSteps] = useState(10);
-  const [hasRemainingSteps, setHasRemainingSteps] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activePath, setActivePath] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const [globalError, setGlobalError] = useState(null);
-  const [configSnapshot, setConfigSnapshot] = useState(null);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [pendingChoice, setPendingChoice] = useState(null);
 
-  const handleConfigSubmit = async (config) => {
-    setIsSubmitting(true);
-    setGlobalError(null);
-
-    try {
-      const payload = {
-        apiKey: config.apiKey,
-        plannerModel: config.plannerModel,
-        soraModel: config.soraModel,
-        videoSize: config.videoSize,
-        basePrompt: config.basePrompt,
-      };
-      const { data } = await api.post("/api/session", payload);
-      setSessionId(data.sessionId);
-      setStory(data.story);
-      setStepCount(data.stepCount);
-      setMaxSteps(data.maxSteps);
-      setHasRemainingSteps(data.hasRemainingSteps);
-      setConfigSnapshot({
-        ...config,
-      });
-      setPhase("experience");
-    } catch (error) {
-      const message = error.response?.data?.detail || error.message || "Failed to start session.";
-      setGlobalError(message);
-    } finally {
-      setIsSubmitting(false);
+  useEffect(() => {
+    const stored = window.localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (stored) {
+      setApiKey(stored);
     }
-  };
+  }, []);
 
-  const handleChoice = async (choiceIndex) => {
-    if (!sessionId) return;
-    setIsGenerating(true);
-    setGlobalError(null);
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const [worldRes, rootRes] = await Promise.all([
+          api.get(`/worlds/${WORLD_ID}`),
+          api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path: "" } }),
+        ]);
+        setWorldInfo(worldRes.data);
+        setStory([rootRes.data]);
+        setActivePath(rootRes.data.path || "");
+      } catch (error) {
+        const message = error.response?.data?.detail || error.message || "Failed to load world.";
+        setGlobalError(message);
+      }
+    };
+    bootstrap();
+  }, []);
 
+  const updateStoryWithScene = useCallback((scene) => {
+    setStory((prev) => {
+      const next = prev.filter((step) => step.depth < scene.depth);
+      next.push(scene);
+      return next;
+    });
+    setActivePath(scene.path);
+  }, []);
+
+  const fetchScene = useCallback(async (path) => {
+    const { data } = await api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path } });
+    return data;
+  }, []);
+
+  const pollForScene = useCallback(async (path, onUpdate) => {
+    setIsPolling(true);
     try {
-      const { data } = await api.post(`/api/session/${sessionId}/choice`, { choiceIndex });
-      setStory(data.story);
-      setStepCount(data.stepCount);
-      setMaxSteps(data.maxSteps);
-      setHasRemainingSteps(data.hasRemainingSteps);
-    } catch (error) {
-      const message = error.response?.data?.detail || error.message || "Failed to advance story.";
-      setGlobalError(message);
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const scene = await fetchScene(path);
+        onUpdate?.(scene);
+        if (scene.status === "ready") {
+          return scene;
+        }
+        if (scene.status === "failed") {
+          const detail = scene.failureDetail || scene.failureCode || "Generation failed.";
+          throw new Error(detail);
+        }
+        await delay(3000);
+      }
+      throw new Error("Timed out waiting for scene generation.");
     } finally {
-      setIsGenerating(false);
+      setIsPolling(false);
     }
-  };
+  }, [fetchScene]);
+
+  const ensureSceneReady = useCallback(
+    async (path, key) => {
+      setIsGenerating(true);
+      setGlobalError(null);
+      try {
+        const { data: kickoff } = await api.post(`/worlds/${WORLD_ID}/scenes`, {
+          path,
+          apiKey: key,
+        });
+        if (kickoff.status === "ready") {
+          updateStoryWithScene(kickoff);
+          return;
+        }
+        if (kickoff.status === "failed") {
+          const detail = kickoff.failureDetail || kickoff.failureCode || "Generation failed.";
+          throw new Error(detail);
+        }
+        updateStoryWithScene(kickoff);
+        const finished = await pollForScene(path, updateStoryWithScene);
+        updateStoryWithScene(finished);
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [pollForScene, updateStoryWithScene]
+  );
+
+  const handleChoice = useCallback(
+    async (choiceIndex) => {
+      if (!story.length) return;
+      const activeScene = story[story.length - 1];
+      setGlobalError(null);
+      const status = activeScene.choicesStatus[choiceIndex] || "pending";
+      const childPath = activeScene.childrenPaths[choiceIndex] || buildChildPath(activeScene.path, choiceIndex);
+
+      if (status === "ready") {
+        try {
+          const nextScene = await fetchScene(childPath);
+          updateStoryWithScene(nextScene);
+        } catch (error) {
+          const message = error.response?.data?.detail || error.message || "Failed to load scene.";
+          setGlobalError(message);
+        }
+        return;
+      }
+
+      if (!apiKey) {
+        setPendingChoice({ index: choiceIndex, path: childPath });
+        setShowKeyModal(true);
+        return;
+      }
+
+      try {
+        await ensureSceneReady(childPath, apiKey);
+      } catch (error) {
+        const message = error.response?.data?.detail || error.message || error.toString();
+        setGlobalError(message);
+      }
+    },
+    [apiKey, ensureSceneReady, fetchScene, story, updateStoryWithScene]
+  );
+
+  const handleApiKeySubmit = useCallback(
+    async (key) => {
+      const trimmed = key.trim();
+      setApiKey(trimmed);
+      window.localStorage.setItem(API_KEY_STORAGE_KEY, trimmed);
+      setShowKeyModal(false);
+      if (pendingChoice) {
+        try {
+          await ensureSceneReady(pendingChoice.path, trimmed);
+        } catch (error) {
+          const message = error.response?.data?.detail || error.message || error.toString();
+          setGlobalError(message);
+        } finally {
+          setPendingChoice(null);
+        }
+      }
+    },
+    [ensureSceneReady, pendingChoice]
+  );
+
+  const handleKeyCancel = useCallback(() => {
+    setPendingChoice(null);
+    setShowKeyModal(false);
+  }, []);
+
+  const handlePromptForKey = useCallback(
+    (path) => {
+      if (typeof path === "string") {
+        setPendingChoice({ index: null, path });
+      }
+      setShowKeyModal(true);
+    },
+    []
+  );
 
   const context = useMemo(
     () => ({
-      sessionId,
-      configSnapshot,
+      worldInfo,
       story,
-      stepCount,
-      maxSteps,
-      hasRemainingSteps,
+      activePath,
+      apiKey,
+      isPolling,
     }),
-    [sessionId, configSnapshot, story, stepCount, maxSteps, hasRemainingSteps]
+    [worldInfo, story, activePath, apiKey, isPolling]
   );
 
-  return phase === "config" ? (
-    <ConfigScreen
-      onSubmit={handleConfigSubmit}
-      isSubmitting={isSubmitting}
-      error={globalError}
-      apiBaseUrl={API_BASE_URL}
-    />
-  ) : (
+  return (
     <ExperienceScreen
       context={context}
       onMakeChoice={handleChoice}
-      isGenerating={isGenerating}
+      isGenerating={isGenerating || isPolling}
       error={globalError}
       apiBaseUrl={API_BASE_URL}
-      onRestart={() => {
-        setPhase("config");
-        setSessionId(null);
-        setStory([]);
-        setStepCount(0);
-        setMaxSteps(10);
-        setHasRemainingSteps(true);
-        setConfigSnapshot(null);
-        setGlobalError(null);
+      onRestart={async () => {
+        try {
+          const rootScene = await fetchScene("");
+          setStory([rootScene]);
+          setActivePath(rootScene.path || "");
+          setGlobalError(null);
+        } catch (error) {
+          const message = error.response?.data?.detail || error.message || "Failed to reset.";
+          setGlobalError(message);
+        }
       }}
+      onPromptForKey={handlePromptForKey}
+      showKeyModal={showKeyModal}
+      onKeySubmit={handleApiKeySubmit}
+      onKeyCancel={handleKeyCancel}
     />
   );
+};
+
+const buildChildPath = (path, index) => {
+  if (!path) return String(index);
+  return `${path}/${index}`;
 };
 
 export default App;

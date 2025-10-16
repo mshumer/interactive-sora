@@ -1,12 +1,12 @@
-# Interactive Sora
+# Sora Control – Shared World Edition
 
 [![Follow on X](https://img.shields.io/twitter/follow/mattshumer_?style=social)](https://x.com/mattshumer_)
 
 [Be the first to know when I publish new AI builds + demos!](https://tally.so/r/w2M17p)
 
-**Immersive choose-your-own adventure experiences powered by OpenAI Sora 2.**
+**One canonical choose-your-own adventure world, expanded by the community.**
 
-Interactive Sora is an exploration of how real-time video generation can power interactive worlds. It's built as a choose-your-own-adventure system... every choice spins up a fresh Sora 2 sequence—turning player choices into responsive, explorable environments that morph with the player’s intent.
+The app now persists every scene, prompt, and video to a shared datastore. When a player picks a branch that already exists, the cached clip plays instantly; if the branch is unexplored, they can contribute their own OpenAI API key to mint it for everyone else. No more duplicate generations or one-off sessions.
 
 ---
 
@@ -17,25 +17,82 @@ Interactive Sora is an exploration of how real-time video generation can power i
 ./start.sh
 ```
 
-The script will:
+The script installs backend/frontend deps, spins up FastAPI on `http://localhost:8000`, and serves the React UI on `http://localhost:5173`.
 
-1. Create (or reuse) `.venv` and install backend dependencies.
-2. Install the frontend packages with `npm install`/`npm ci`.
-3. Launch FastAPI on `http://localhost:8000` and the Vite dev server on `http://localhost:5173`.
-
-Open your browser at `http://localhost:5173` and drop in an OpenAI API key to play.
-
-> **Tip:** The key is stored locally via `localStorage` so you don’t need to re-enter it while iterating.
+The world boots with a placeholder base prompt. First-time explorers will be asked for an OpenAI key only when they select an ungenerated branch. Keys stay in `localStorage` and never leave the browser.
 
 ---
 
 ## Repo Layout
 
-- `app.py` – FastAPI backend that orchestrates planner calls, Sora jobs, and media delivery.
+- `app.py` – FastAPI backend with shared-world persistence, R2 uploads, and the Sora/Planner orchestration.
 - `frontend/` – React client with the immersive player UI.
 - `start.sh` – Convenience script that bootstraps everything.
 - `generate_preset_content.py` – Optional tool for pre-rendering demo trees per preset.
 
 ---
 
-Build rich, cinematic branching adventures with Interactive Sora.
+## Environment
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `WORLD_ID` | `default` | Namespace for this shared world. |
+| `WORLD_BASE_PROMPT` | placeholder text | Cinematic seed prompt used for the very first scene. |
+| `PLANNER_MODEL` | `gpt-5` | Planner model passed to the Responses API. |
+| `SORA_MODEL` | `sora-2` | Model name forwarded to the Sora `/videos` endpoint. |
+| `VIDEO_SIZE` | `1280x720` | Render resolution for all clips. |
+| `DATABASE_URL` | `sqlite:///./sora_world.db` | SQLAlchemy connection string. Supply your Railway/Supabase URL in production. |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | — | Cloudflare R2 credentials. If unset, assets fall back to local disk (`storage/`). |
+| `R2_PUBLIC_BASE_URL` | — | Optional CDN base (e.g. `https://media.example.com`). |
+| `SCENE_TIMEOUT_SECONDS` | `900` | Cancel and recycle claims that sit in `queued` longer than 15 minutes. |
+| `WATCHDOG_INTERVAL_SECONDS` | `60` | How often the timeout watchdog scans for stale jobs. |
+| `CONTRIBUTOR_SALT` | `sora-shared-world` | Salt used when hashing contributor metadata. |
+
+For local hacking you can skip the R2 vars—videos will be copied into `storage/` automatically.
+
+Run the backend once to create the tables:
+
+```bash
+uvicorn app:app --reload
+```
+
+On first load the root scene is `pending`. Launch the UI at `http://localhost:5173`, click the highlighted branch, and drop in your key to mint the opening clip.
+
+---
+
+## API Surface
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /worlds/{worldId}` | World metadata (base prompt, fixed models). |
+| `GET /worlds/{worldId}/scenes?path=...` | Fetch a scene and child status. Creates placeholder rows on demand. |
+| `POST /worlds/{worldId}/scenes` | Claim or generate a branch using the caller’s API key. Returns `ready`, `queued`, or `failed`. |
+| `POST /worlds/{worldId}/scenes/{path}/retry` | Convenience alias for retrying failed branches. |
+| `GET /worlds/{worldId}/metrics` | Aggregate telemetry: branch counts, queued/failed totals, storage bytes, and success rate. |
+
+All writes are serialized per `worldId + path`, so only the first explorer to claim a branch spends credits. Everyone else waits for the cached asset.
+
+---
+
+## Frontend Behaviour
+
+- Config screen removed—players jump straight into the world.
+- Choices with cached clips are highlighted, signalling instant playback.
+- Selecting an unexplored branch prompts for a key (with cancel option to pick another path).
+- Keys persist in `localStorage` under `sora_shared_world_api_key`.
+- Storyboard/timeline reflects the canonical branch status in real time.
+- Active generations surface live progress so explorers can see how close a branch is to finishing.
+
+---
+
+## Telemetry & Operations
+
+- `SceneMetric` rows capture storage usage for each completed render.
+- The timeout watchdog resets branches stuck in `queued` for >10 minutes and cancels the underlying generation thread.
+- `GET /worlds/{id}/metrics` powers lightweight dashboards for branch count, queued backlog, and success rate.
+- Logs surface generation start/finish/failure events, making Railway alerts straightforward.
+
+---
+
+Build shared, cinematic adventures—once a branch exists, the whole world inherits it.
+

@@ -37,6 +37,23 @@
   padding: 2rem;
 }
 
+.video-placeholder .cta {
+  margin-top: 1.2rem;
+  padding: 0.85rem 1.8rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.78), rgba(236, 72, 153, 0.78));
+  border: none;
+  color: rgba(248, 250, 252, 0.95);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  cursor: pointer;
+  transition: transform 180ms ease;
+}
+
+.video-placeholder .cta:hover {
+  transform: translateY(-3px);
+}
+
 .video-mask {
   position: absolute;
   inset: 0;
@@ -202,6 +219,20 @@
   box-shadow: 0 24px 70px rgba(13, 148, 136, 0.35);
 }
 
+.choice-pod.ready {
+  border-color: rgba(59, 130, 246, 0.8);
+  background: linear-gradient(135deg, rgba(30, 64, 175, 0.45), rgba(37, 99, 235, 0.3));
+  box-shadow: 0 24px 70px rgba(37, 99, 235, 0.32);
+}
+
+.choice-pod.queued {
+  border-color: rgba(234, 179, 8, 0.65);
+}
+
+.choice-pod.failed {
+  border-color: rgba(248, 113, 113, 0.65);
+}
+
 .choice-number {
   font-family: "Orbitron", "Outfit", sans-serif;
   font-size: 0.9rem;
@@ -212,6 +243,31 @@
 
 .choice-copy {
   line-height: 1.4;
+}
+
+.choice-status {
+  position: absolute;
+  top: 0.85rem;
+  right: 1.1rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.7);
+}
+
+.choice-status.queued {
+  color: rgba(234, 179, 8, 0.85);
+}
+
+.choice-status.failed {
+  color: rgba(248, 113, 113, 0.9);
+}
+
+.choice-placeholder {
+  margin: 0;
+  grid-column: 1 / -1;
+  text-align: center;
+  color: rgba(148, 163, 184, 0.8);
 }
 
 .loading-veil {
@@ -226,6 +282,35 @@
   backdrop-filter: blur(6px);
   z-index: 4;
   text-align: center;
+}
+
+.progress-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  width: min(320px, 70vw);
+}
+
+.progress-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.85), rgba(236, 72, 153, 0.85));
+  transition: width 180ms ease;
+}
+
+.progress-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.85);
 }
 
 .loading-core {
@@ -262,6 +347,104 @@
   color: #fee2e2;
   backdrop-filter: blur(12px);
   z-index: 5;
+}
+
+.key-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  z-index: 10;
+}
+
+.key-modal {
+  width: min(420px, 92vw);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 18px;
+  padding: 1.8rem;
+  box-shadow: 0 24px 140px rgba(30, 64, 175, 0.42);
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.key-modal h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.15rem;
+}
+
+.key-modal p {
+  margin: 0 0 1.4rem;
+  color: rgba(148, 163, 184, 0.9);
+  line-height: 1.5;
+}
+
+.key-input-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.key-input-row input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.75);
+  color: rgba(248, 250, 252, 0.95);
+}
+
+.reveal-toggle {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.75);
+  color: rgba(226, 232, 240, 0.85);
+  padding: 0.75rem 1.1rem;
+  cursor: pointer;
+}
+
+.key-actions {
+  margin-top: 1.6rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.8rem;
+}
+
+.ghost,
+.primary {
+  border-radius: 12px;
+  padding: 0.75rem 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  font-size: 0.72rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ghost {
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.primary {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.8), rgba(236, 72, 153, 0.78));
+  color: rgba(248, 250, 252, 0.95);
+  border-color: rgba(37, 99, 235, 0.8);
+}
+
+.ghost:hover,
+.primary:hover {
+  transform: translateY(-2px);
+}
+
+.immersive-stage.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: rgba(226, 232, 240, 0.85);
 }
 
 @media (max-width: 960px) {

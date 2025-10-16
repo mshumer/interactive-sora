@@ -1,47 +1,724 @@
+from __future__ import annotations
+
 import json
+import logging
 import mimetypes
 import os
 import re
 import subprocess
+import tempfile
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-from uuid import uuid4
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from database import init_db, session_scope
+from models import (
+    Scene,
+    SceneMetric,
+    SceneStatus,
+    compute_depth,
+    last_choice_index,
+    parent_path,
+    split_path,
+)
+from storage import LocalStorageClient, StoredAsset, build_storage_client
 
 try:
     import cv2  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
+except Exception:  # pragma: no cover
     cv2 = None
 
 try:
     import imageio_ffmpeg  # type: ignore
 
     FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
-except Exception:  # pragma: no cover - optional dependency
+except Exception:  # pragma: no cover
     FFMPEG_BIN = None
 
-APP_TITLE = "Sora Choose-Your-Own Adventure API"
+APP_TITLE = "Sora Shared World API"
+
+DEFAULT_SECONDS = 8
+
+OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
+SORA_VIDEOS_ENDPOINT = f"{OPENAI_API_BASE}/videos"
+RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
+
+WORLD_ID = os.environ.get("WORLD_ID", "default")
+BASE_PROMPT = os.environ.get(
+    "WORLD_BASE_PROMPT",
+    "A placeholder cinematic adventure world ready to be discovered.",
+)
+PLANNER_MODEL = os.environ.get("PLANNER_MODEL", "gpt-5")
+SORA_MODEL = os.environ.get("SORA_MODEL", "sora-2")
+VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1280x720")
+SCENE_TIMEOUT_SECONDS = int(os.environ.get("SCENE_TIMEOUT_SECONDS", "900"))
+WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"))
+CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "sora-shared-world")
 
 VIDEO_DIR = Path("sora_cyoa_videos")
 FRAME_DIR = Path("sora_cyoa_frames")
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_VIDEO_SIZE = "1280x720"
-DEFAULT_SECONDS = 8
-ALLOWED_SECONDS = [4, 8, 12]
+storage_client = build_storage_client()
+logger = logging.getLogger("sora_shared_world")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("[%(levelname)s] %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
 
-OPENAI_API_BASE = "https://api.openai.com/v1"
-SORA_VIDEOS_ENDPOINT = f"{OPENAI_API_BASE}/videos"
-RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
+app = FastAPI(title=APP_TITLE)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if isinstance(storage_client, LocalStorageClient):
+    app.mount("/storage", StaticFiles(directory=storage_client.base_dir), name="storage")
+
+
+class SceneResponse(BaseModel):
+    world_id: str = Field(..., alias="worldId")
+    path: str
+    depth: int
+    status: str
+    scenario_display: Optional[str] = Field(None, alias="scenarioDisplay")
+    sora_prompt: Optional[str] = Field(None, alias="soraPrompt")
+    trigger_choice: Optional[str] = Field(None, alias="triggerChoice")
+    choices: List[str] = Field(default_factory=list)
+    choices_status: List[str] = Field(default_factory=list, alias="choicesStatus")
+    children_paths: List[str] = Field(default_factory=list, alias="childrenPaths")
+    video_url: Optional[str] = Field(None, alias="videoUrl")
+    poster_url: Optional[str] = Field(None, alias="posterUrl")
+    failure_code: Optional[str] = Field(None, alias="failureCode")
+    failure_detail: Optional[str] = Field(None, alias="failureDetail")
+    queued_since: Optional[datetime] = Field(None, alias="queuedSince")
+    updated_at: Optional[datetime] = Field(None, alias="updatedAt")
+    progress: Optional[int] = None
+    progress_updated_at: Optional[datetime] = Field(None, alias="progressUpdatedAt")
+
+
+class SceneGenerationRequest(BaseModel):
+    path: str = ""
+    api_key: str = Field(..., alias="apiKey")
+
+    @validator("path")
+    def validate_path(cls, value: str) -> str:
+        if value == "":
+            return ""
+        if not re.fullmatch(r"(\d+)(/\d+)*", value):
+            raise ValueError("path must be slash-separated numeric indexes, e.g. '0/1'")
+        return value
+
+
+class WorldResponse(BaseModel):
+    world_id: str = Field(..., alias="worldId")
+    base_prompt: str = Field(..., alias="basePrompt")
+    planner_model: str = Field(..., alias="plannerModel")
+    sora_model: str = Field(..., alias="soraModel")
+    video_size: str = Field(..., alias="videoSize")
+
+
+class WorldMetricsResponse(BaseModel):
+    world_id: str = Field(..., alias="worldId")
+    scene_count: int = Field(..., alias="sceneCount")
+    ready_count: int = Field(..., alias="readyCount")
+    queued_count: int = Field(..., alias="queuedCount")
+    failed_count: int = Field(..., alias="failedCount")
+    storage_bytes: int = Field(..., alias="storageBytes")
+    success_rate: float = Field(..., alias="successRate")
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def normalize_seconds(secs: int) -> int:
+    allowed = (4, 8, 12)
+    return min(allowed, key=lambda value: abs(value - int(secs)))
+
+
+@dataclass
+class GenerationHandle:
+    world_id: str
+    path: str
+    cancel_event: threading.Event
+    thread: threading.Thread
+
+
+_RUNNING_GENERATIONS: Dict[Tuple[str, str], GenerationHandle] = {}
+_RUN_LOCK = threading.Lock()
+
+
+def register_generation(handle: GenerationHandle) -> None:
+    with _RUN_LOCK:
+        _RUNNING_GENERATIONS[(handle.world_id, handle.path)] = handle
+
+
+def clear_generation(world_id: str, path: str) -> None:
+    with _RUN_LOCK:
+        _RUNNING_GENERATIONS.pop((world_id, path), None)
+
+
+def request_cancel(world_id: str, path: str) -> None:
+    with _RUN_LOCK:
+        handle = _RUNNING_GENERATIONS.get((world_id, path))
+        if handle:
+            handle.cancel_event.set()
+
+
+@app.on_event("startup")
+def on_startup() -> None:
+    init_db()
+    threading.Thread(target=_timeout_watchdog, daemon=True).start()
+
+
+@app.get("/health")
+def healthcheck() -> Dict[str, str]:
+    return {"status": "ok"}
+
+
+@app.get("/worlds/{world_id}", response_model=WorldResponse)
+def get_world(world_id: str) -> WorldResponse:
+    if world_id != WORLD_ID:
+        raise HTTPException(status_code=404, detail="World not found")
+    return WorldResponse(
+        worldId=WORLD_ID,
+        basePrompt=BASE_PROMPT,
+        plannerModel=PLANNER_MODEL,
+        soraModel=SORA_MODEL,
+        videoSize=VIDEO_SIZE,
+    )
+
+
+@app.get("/worlds/{world_id}/metrics", response_model=WorldMetricsResponse)
+def get_world_metrics(world_id: str) -> WorldMetricsResponse:
+    if world_id != WORLD_ID:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    with session_scope() as session:
+        total = session.execute(
+            select(func.count()).where(Scene.world_id == world_id)
+        ).scalar_one()
+        ready = session.execute(
+            select(func.count()).where(Scene.world_id == world_id, Scene.status == SceneStatus.READY)
+        ).scalar_one()
+        queued = session.execute(
+            select(func.count()).where(Scene.world_id == world_id, Scene.status == SceneStatus.QUEUED)
+        ).scalar_one()
+        failed = session.execute(
+            select(func.count()).where(Scene.world_id == world_id, Scene.status == SceneStatus.FAILED)
+        ).scalar_one()
+        storage_bytes = session.execute(
+            select(func.coalesce(func.sum(SceneMetric.storage_bytes), 0))
+            .join(Scene, SceneMetric.scene_id == Scene.id)
+            .where(Scene.world_id == world_id)
+        ).scalar_one()
+
+    success_denominator = max(ready + failed, 1)
+    success_rate = ready / success_denominator
+
+    return WorldMetricsResponse(
+        worldId=world_id,
+        sceneCount=total,
+        readyCount=ready,
+        queuedCount=queued,
+        failedCount=failed,
+        storageBytes=int(storage_bytes or 0),
+        successRate=success_rate,
+    )
+
+
+@app.get("/worlds/{world_id}/scenes", response_model=SceneResponse)
+def get_scene(world_id: str, path: str = Query("")) -> SceneResponse:
+    if world_id != WORLD_ID:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    with session_scope() as session:
+        scene = ensure_scene_exists(session, world_id, path)
+        return build_scene_response(session, scene)
+
+
+@app.post("/worlds/{world_id}/scenes", response_model=SceneResponse)
+def generate_scene_endpoint(world_id: str, payload: SceneGenerationRequest) -> SceneResponse:
+    if world_id != WORLD_ID:
+        raise HTTPException(status_code=404, detail="World not found")
+
+    path = payload.path or ""
+    api_key = payload.api_key.strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key required for generation")
+
+    should_start = False
+    with session_scope() as session:
+        scene = ensure_scene_exists(session, world_id, path)
+        if scene.status == SceneStatus.READY:
+            logger.info("scene already ready world=%s path=%s", world_id, path or "root")
+            return build_scene_response(session, scene)
+        if scene.status == SceneStatus.QUEUED:
+            logger.info("scene already queued world=%s path=%s", world_id, path or "root")
+            return build_scene_response(session, scene)
+
+        # pending or failed
+        logger.info("scene claim queued world=%s path=%s", world_id, path or "root")
+        scene.status = SceneStatus.QUEUED
+        scene.failure_code = None
+        scene.failure_detail = None
+        scene.started_at = utcnow()
+        scene.progress = 0
+        scene.progress_updated_at = utcnow()
+        session.flush()
+        should_start = True
+        response = build_scene_response(session, scene)
+
+    if should_start:
+        start_generation(world_id, path, api_key)
+    return response
+
+
+@app.post("/worlds/{world_id}/scenes/{path:path}/retry", response_model=SceneResponse)
+def retry_scene(world_id: str, path: str, payload: SceneGenerationRequest) -> SceneResponse:
+    payload.path = path
+    return generate_scene_endpoint(world_id, payload)
+
+
+def ensure_scene_exists(session: Session, world_id: str, path: str) -> Scene:
+    stmt = select(Scene).where(Scene.world_id == world_id, Scene.path == path)
+    scene = session.execute(stmt).scalars().first()
+    if scene:
+        return scene
+
+    scene = Scene(
+        world_id=world_id,
+        path=path,
+        depth=compute_depth(path),
+        status=SceneStatus.PENDING,
+    )
+    parent = parent_path(path)
+    if parent:
+        scene.trigger_choice = None
+    session.add(scene)
+    session.flush()
+    return scene
+
+
+def _normalize_asset_url(url: Optional[str]) -> Optional[str]:
+    if not url:
+        return url
+    if isinstance(storage_client, LocalStorageClient):
+        base = storage_client.base_dir.resolve()
+        try:
+            path = Path(url)
+            if path.is_absolute():
+                resolved = path.resolve()
+                relative = resolved.relative_to(base)
+                rel_posix = relative.as_posix()
+                if resolved.suffix.lower() == ".mp4":
+                    return f"/storage/{rel_posix}"
+                if resolved.suffix.lower() in {".jpg", ".jpeg"}:
+                    return f"/storage/{rel_posix}"
+        except Exception:
+            pass
+    return url
+
+
+def _update_scene_progress(world_id: str, path: str, progress: Optional[int]) -> None:
+    if progress is None:
+        return
+    with session_scope() as session:
+        scene = (
+            session.execute(select(Scene).where(Scene.world_id == world_id, Scene.path == path))
+            .scalars()
+            .first()
+        )
+        if not scene or scene.status != SceneStatus.QUEUED:
+            return
+        scene.progress = int(progress)
+        scene.progress_updated_at = utcnow()
+
+
+def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
+    choices = scene.choices or []
+    child_statuses: List[str] = []
+    child_paths: List[str] = []
+    for idx in range(len(choices) or 3):
+        child = scene.child_path(idx) if hasattr(scene, "child_path") else _child_path(scene.path, idx)
+        child_paths.append(child)
+        child_scene = (
+            session.execute(
+                select(Scene).where(Scene.world_id == scene.world_id, Scene.path == child)
+            ).scalars().first()
+        )
+        if child_scene is None:
+            child_statuses.append(SceneStatus.PENDING.value)
+        else:
+            child_statuses.append(child_scene.status.value)
+
+    return SceneResponse(
+        worldId=scene.world_id,
+        path=scene.path,
+        depth=scene.depth,
+        status=scene.status.value,
+        scenarioDisplay=scene.scenario_display,
+        soraPrompt=scene.sora_prompt,
+        triggerChoice=scene.trigger_choice,
+        choices=choices if isinstance(choices, list) else [],
+        choicesStatus=child_statuses,
+        childrenPaths=child_paths,
+        videoUrl=_normalize_asset_url(scene.video_url),
+        posterUrl=_normalize_asset_url(scene.poster_url),
+        failureCode=scene.failure_code,
+        failureDetail=scene.failure_detail,
+        queuedSince=scene.started_at,
+        updatedAt=scene.updated_at,
+        progress=getattr(scene, "progress", None),
+        progressUpdatedAt=getattr(scene, "progress_updated_at", None),
+    )
+
+
+def start_generation(world_id: str, path: str, api_key: str) -> None:
+    cancel_event = threading.Event()
+    thread = threading.Thread(
+        target=_generate_scene,
+        args=(world_id, path, api_key, cancel_event),
+        daemon=True,
+        name=f"gen-{world_id}-{path or 'root'}",
+    )
+    handle = GenerationHandle(world_id=world_id, path=path, cancel_event=cancel_event, thread=thread)
+    register_generation(handle)
+    logger.info("generation queued world=%s path=%s", world_id, path or "root")
+    thread.start()
+
+
+def _generate_scene(world_id: str, path: str, api_key: str, cancel_event: threading.Event) -> None:
+    contributor_hash = hash_contributor(api_key, path)
+    try:
+        logger.info("generation started world=%s path=%s", world_id, path or "root")
+        try:
+            _generate_scene_inner(world_id, path, api_key, cancel_event, contributor_hash)
+        except SceneCancelled:
+            logger.info("generation cancelled world=%s path=%s", world_id, path or "root")
+            _mark_pending(world_id, path)
+        except Exception as exc:
+            logger.exception("generation error world=%s path=%s", world_id, path or "root")
+            _mark_failed(world_id, path, "generation_error", str(exc))
+    finally:
+        logger.info("generation finished world=%s path=%s", world_id, path or "root")
+        clear_generation(world_id, path)
+
+
+def _generate_scene_inner(
+    world_id: str,
+    path: str,
+    api_key: str,
+    cancel_event: threading.Event,
+    contributor_hash: str,
+) -> None:
+    with session_scope() as session:
+        scene = (
+            session.execute(
+                select(Scene).where(Scene.world_id == world_id, Scene.path == path).with_for_update()
+            )
+            .scalars()
+            .one()
+        )
+        if scene.status != SceneStatus.QUEUED:
+            return
+        scene.started_at = scene.started_at or utcnow()
+        session.flush()
+
+    if cancel_event.is_set():
+        _mark_pending(world_id, path)
+        return
+
+    planner_result = plan_scene(world_id, path, api_key)
+    if planner_result.get("_planner_missing_prompt"):
+        _mark_failed(world_id, path, "planner_missing_prompt", planner_result.get("_planner_missing_prompt_reason", ""))
+        return
+
+    if cancel_event.is_set():
+        _mark_pending(world_id, path)
+        return
+
+    try:
+        asset = render_scene_video(world_id, path, planner_result["sora_prompt"], api_key, cancel_event)
+    except SceneCancelled:
+        _mark_pending(world_id, path)
+        return
+    except Exception as exc:
+        _mark_failed(world_id, path, "sora_error", str(exc))
+        return
+
+    if cancel_event.is_set():
+        _mark_pending(world_id, path)
+        return
+
+    with session_scope() as session:
+        scene = (
+            session.execute(
+                select(Scene).where(Scene.world_id == world_id, Scene.path == path).with_for_update()
+            )
+            .scalars()
+            .one()
+        )
+        scene.scenario_display = planner_result["scenario_display"]
+        scene.sora_prompt = planner_result["sora_prompt"]
+        scene.choices = planner_result["choices"]
+        scene.planner_model = PLANNER_MODEL
+        scene.planner_raw = planner_result.get("_raw_planner_output")
+        scene.video_url = asset.video_url
+        scene.poster_url = asset.poster_url
+        scene.video_seconds = DEFAULT_SECONDS
+        scene.status = SceneStatus.READY
+        scene.failure_code = None
+        scene.failure_detail = None
+        scene.contributor_hash = contributor_hash
+        scene.started_at = None
+        scene.progress = 100
+        scene.progress_updated_at = utcnow()
+        scene.trigger_choice = determine_trigger_choice(session, world_id, path)
+        session.add(
+            SceneMetric(
+                scene_id=scene.id,
+                rendered=1,
+                render_time_ms=None,
+                storage_bytes=asset.bytes_written,
+            )
+        )
+
+
+def determine_trigger_choice(session: Session, world_id: str, path: str) -> Optional[str]:
+    parent = parent_path(path)
+    if parent is None:
+        return None
+    parent_scene = (
+        session.execute(select(Scene).where(Scene.world_id == world_id, Scene.path == parent))
+        .scalars()
+        .first()
+    )
+    if parent_scene is None or not parent_scene.choices:
+        return None
+    idx = last_choice_index(path)
+    if idx is None:
+        return None
+    if idx < len(parent_scene.choices):
+        return parent_scene.choices[idx]
+    return None
+
+
+def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
+    if not path:
+        result = plan_initial_scene(api_key=api_key, base_prompt=BASE_PROMPT, model=PLANNER_MODEL)
+    else:
+        parent_path_value = parent_path(path)
+        if parent_path_value is None:
+            raise RuntimeError("Path has no parent; cannot continue")
+        ancestor_paths = ancestor_path_list(path)
+        with session_scope() as session:
+            stmt = select(Scene).where(Scene.world_id == world_id, Scene.path.in_(ancestor_paths))
+            rows = session.execute(stmt).scalars().all()
+        by_path = {row.path: row for row in rows}
+        parent = by_path.get(parent_path_value)
+        if parent is None or not parent.choices:
+            raise RuntimeError("Parent scene lacks choices; cannot continue")
+        prior_prompts = []
+        for anc_path in ancestor_paths:
+            scene = by_path.get(anc_path)
+            if scene and scene.sora_prompt:
+                prior_prompts.append(scene.sora_prompt)
+        idx = last_choice_index(path)
+        if idx is None or idx >= len(parent.choices):
+            raise RuntimeError("Invalid choice index for path")
+        chosen_choice = parent.choices[idx]
+        result = plan_next_scene(
+            api_key=api_key,
+            base_prompt=BASE_PROMPT,
+            prior_sora_prompts=prior_prompts,
+            chosen_choice=chosen_choice,
+            model=PLANNER_MODEL,
+        )
+    return result
+
+
+class SceneCancelled(Exception):
+    pass
+
+
+def ancestor_path_list(path: str) -> List[str]:
+    parts = split_path(path)
+    ancestors: List[str] = []
+    for end in range(1, len(parts) + 1):
+        ancestor = "/".join(str(part) for part in parts[:end])
+        ancestors.append(ancestor)
+    if ancestors:
+        # Always include root path "" as the base context
+        ancestors.insert(0, "")
+    else:
+        ancestors.append("")
+    return ancestors
+
+
+def render_scene_video(
+    world_id: str,
+    path: str,
+    sora_prompt: str,
+    api_key: str,
+    cancel_event: threading.Event,
+) -> StoredAsset:
+    video_id, video_path = None, None
+    parent_last_frame: Optional[Path] = None
+    parent = parent_path(path)
+    if parent:
+        with session_scope() as session:
+            parent_scene = (
+                session.execute(
+                    select(Scene).where(Scene.world_id == world_id, Scene.path == parent)
+                )
+                .scalars()
+                .first()
+            )
+        if parent_scene and parent_scene.poster_url:
+            parent_last_frame = download_asset(parent_scene.poster_url)
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
+            video_job = sora_create_video(
+                api_key=api_key,
+                sora_prompt=sora_prompt,
+                model=SORA_MODEL,
+                size=VIDEO_SIZE,
+                seconds=DEFAULT_SECONDS,
+                input_reference_path=parent_last_frame,
+            )
+            _update_scene_progress(world_id, path, video_job.get("progress"))
+            video = sora_poll_until_complete(
+                api_key,
+                video_job,
+                cancel_event,
+                progress_callback=lambda prog: _update_scene_progress(world_id, path, prog),
+            )
+            if cancel_event.is_set():
+                raise SceneCancelled()
+            video_id = video["id"]
+
+            video_file = tmp_dir_path / f"{video_id}.mp4"
+            sora_download_content(api_key, video_id, video_file, variant="video")
+            frame_file = tmp_dir_path / f"{video_id}_last.jpg"
+            extract_last_frame(video_file, frame_file)
+
+            key_prefix = f"{world_id}/{path or 'root'}"
+            asset = storage_client.upload(video_file, frame_file, key_prefix=key_prefix)
+            return asset
+    finally:
+        if parent_last_frame and parent_last_frame.exists():
+            parent_last_frame.unlink(missing_ok=True)
+
+
+def download_asset(url: str) -> Optional[Path]:
+    try:
+        response = requests.get(url, timeout=30)
+        if response.status_code >= 400:
+            return None
+        suffix = Path(url).suffix or ".jpg"
+        fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+        os.close(fd)
+        tmp = Path(tmp_path)
+        with tmp.open("wb") as fh:
+            fh.write(response.content)
+        return tmp
+    except Exception:
+        return None
+
+
+def hash_contributor(api_key: str, path: str) -> str:
+    import hashlib
+
+    payload = f"{CONTRIBUTOR_SALT}:{path}:{api_key}".encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _mark_pending(world_id: str, path: str) -> None:
+    with session_scope() as session:
+        scene = (
+            session.execute(select(Scene).where(Scene.world_id == world_id, Scene.path == path))
+            .scalars()
+            .first()
+        )
+        if not scene:
+            return
+        scene.status = SceneStatus.PENDING
+        scene.started_at = None
+        scene.failure_code = None
+        scene.failure_detail = None
+        scene.contributor_hash = None
+        scene.progress = None
+        scene.progress_updated_at = None
+        logger.info("scene reset to pending world=%s path=%s", world_id, path or "root")
+
+
+def _mark_failed(world_id: str, path: str, code: str, detail: str) -> None:
+    with session_scope() as session:
+        scene = (
+            session.execute(select(Scene).where(Scene.world_id == world_id, Scene.path == path))
+            .scalars()
+            .first()
+        )
+        if not scene:
+            return
+        scene.status = SceneStatus.FAILED
+        scene.failure_code = code
+        scene.failure_detail = detail
+        scene.started_at = None
+        scene.contributor_hash = None
+        scene.progress = None
+        scene.progress_updated_at = None
+        logger.warning("scene failed world=%s path=%s code=%s detail=%s", world_id, path or "root", code, detail)
+
+
+def _timeout_watchdog() -> None:
+    while True:
+        time.sleep(WATCHDOG_INTERVAL_SECONDS)
+        cutoff = utcnow() - timedelta(seconds=SCENE_TIMEOUT_SECONDS)
+        try:
+            with session_scope() as session:
+                stmt = select(Scene).where(
+                    Scene.world_id == WORLD_ID,
+                    Scene.status == SceneStatus.QUEUED,
+                    Scene.started_at.isnot(None),
+                )
+                rows = session.execute(stmt).scalars().all()
+                for scene in rows:
+                    if scene.started_at and scene.started_at < cutoff:
+                        request_cancel(scene.world_id, scene.path)
+                        scene.status = SceneStatus.PENDING
+                        scene.started_at = None
+        except Exception:
+            continue
+
+
+def _child_path(path: str, index: int) -> str:
+    if not path:
+        return str(index)
+    return f"{path}/{index}"
+
+
+# === Planner Helpers ===
 
 PLANNER_SYSTEM = """
 You are the Scenario Planner for a Sora-powered choose-your-own-adventure game.
@@ -79,91 +756,6 @@ Rules:
 
 5) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
-
-
-class CreateSessionRequest(BaseModel):
-    api_key: str = Field(..., alias="apiKey")
-    planner_model: str = Field(..., alias="plannerModel")
-    sora_model: str = Field(..., alias="soraModel")
-    video_size: str = Field(DEFAULT_VIDEO_SIZE, alias="videoSize")
-    base_prompt: str = Field(..., alias="basePrompt")
-    max_steps: int = Field(10, alias="maxSteps")
-
-    @validator("max_steps")
-    def validate_max_steps(cls, value: int) -> int:
-        if not 1 <= value <= 30:
-            raise ValueError("maxSteps must be between 1 and 30")
-        return value
-
-
-class ChoiceRequest(BaseModel):
-    choice_index: int = Field(..., alias="choiceIndex")
-
-    @validator("choice_index")
-    def validate_choice_index(cls, value: int) -> int:
-        if value not in (0, 1, 2):
-            raise ValueError("choiceIndex must be 0, 1, or 2")
-        return value
-
-
-class StoryStepResponse(BaseModel):
-    scene_number: int = Field(..., alias="sceneNumber")
-    scenario_display: str = Field(..., alias="scenarioDisplay")
-    sora_prompt: str = Field(..., alias="soraPrompt")
-    choices: List[str]
-    choice_index: Optional[int] = Field(None, alias="choiceIndex")
-    video_url: Optional[str] = Field(None, alias="videoUrl")
-    poster_url: Optional[str] = Field(None, alias="posterUrl")
-    video_id: Optional[str] = Field(None, alias="videoId")
-    planner_missing_prompt: bool = Field(False, alias="plannerMissingPrompt")
-    planner_missing_prompt_reason: str = Field("", alias="plannerMissingPromptReason")
-
-
-class SessionResponse(BaseModel):
-    session_id: str = Field(..., alias="sessionId")
-    story: List[StoryStepResponse]
-    step_count: int = Field(..., alias="stepCount")
-    max_steps: int = Field(..., alias="maxSteps")
-    has_remaining_steps: bool = Field(..., alias="hasRemainingSteps")
-
-
-@dataclass
-class SessionConfig:
-    api_key: str
-    planner_model: str
-    sora_model: str
-    video_size: str
-    base_prompt: str
-    max_steps: int
-
-
-@dataclass
-class SessionState:
-    config: SessionConfig
-    story: List[Dict[str, Any]] = field(default_factory=list)
-    step_count: int = 0
-    lock: threading.Lock = field(default_factory=threading.Lock)
-
-
-SESSIONS: Dict[str, SessionState] = {}
-
-app = FastAPI(title=APP_TITLE)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.mount("/media/videos", StaticFiles(directory=str(VIDEO_DIR)), name="videos")
-app.mount("/media/frames", StaticFiles(directory=str(FRAME_DIR)), name="frames")
-
-
-def _auth_headers(api_key: str) -> Dict[str, str]:
-    if not api_key:
-        raise RuntimeError("OpenAI API key is required")
-    return {
-        "Authorization": f"Bearer {api_key}",
-    }
 
 
 def responses_create(api_key: str, model: str, instructions: str, user_input: str) -> str:
@@ -383,9 +975,15 @@ Return JSON with keys: scenario_display, sora_prompt, choices (3).
     return scene
 
 
-def _guess_mime(path: Path) -> str:
-    mime = mimetypes.guess_type(str(path))[0]
-    return mime or "application/octet-stream"
+# === Sora Helpers ===
+
+
+def _auth_headers(api_key: str) -> Dict[str, str]:
+    if not api_key:
+        raise RuntimeError("OpenAI API key is required")
+    return {
+        "Authorization": f"Bearer {api_key}",
+    }
 
 
 def sora_create_video(
@@ -402,10 +1000,10 @@ def sora_create_video(
         "size": (None, size),
         "seconds": (None, str(seconds)),
     }
-    if input_reference_path:
+    if input_reference_path and input_reference_path.exists():
         files["input_reference"] = (
             input_reference_path.name,
-            open(input_reference_path, "rb"),  # noqa: SIM115 - leave open for requests to stream
+            open(input_reference_path, "rb"),
             _guess_mime(input_reference_path),
         )
     response = requests.post(SORA_VIDEOS_ENDPOINT, headers=_auth_headers(api_key), files=files, timeout=600)
@@ -462,12 +1060,23 @@ def sora_download_content(api_key: str, video_id: str, out_path: Path, variant: 
     return out_path
 
 
-def sora_poll_until_complete(api_key: str, job: dict) -> dict:
+def sora_poll_until_complete(
+    api_key: str,
+    job: dict,
+    cancel_event: threading.Event,
+    progress_callback: Optional[Callable[[Optional[int]], None]] = None,
+) -> dict:
     video = job
     video_id = video["id"]
+    if progress_callback:
+        progress_callback(video.get("progress"))
     while video.get("status") in ("queued", "in_progress"):
+        if cancel_event.is_set():
+            raise SceneCancelled()
         time.sleep(2)
         video = sora_retrieve_video(api_key, video_id)
+        if progress_callback:
+            progress_callback(video.get("progress"))
 
     if video.get("status") != "completed":
         message = (video.get("error") or {}).get("message", f"Job {video_id} failed")
@@ -517,8 +1126,9 @@ def extract_last_frame(video_path: Path, out_image_path: Path) -> Path:
     raise RuntimeError("Failed to extract last frame: OpenCV/FFmpeg unavailable or video unreadable.")
 
 
-def normalize_seconds(secs: int) -> int:
-    return min(ALLOWED_SECONDS, key=lambda value: abs(value - int(secs)))
+def _guess_mime(path: Path) -> str:
+    mime = mimetypes.guess_type(str(path))[0]
+    return mime or "application/octet-stream"
 
 
 def generate_scene_video(
@@ -528,7 +1138,7 @@ def generate_scene_video(
     size: str,
     seconds: int,
     input_reference: Optional[Path],
-) -> (str, Path, Path):
+) -> Tuple[str, Path, Path]:
     seconds = normalize_seconds(seconds)
     job = sora_create_video(
         api_key=api_key,
@@ -539,7 +1149,7 @@ def generate_scene_video(
         input_reference_path=input_reference,
     )
 
-    video = sora_poll_until_complete(api_key, job)
+    video = sora_poll_until_complete(api_key, job, threading.Event())
     video_id = video["id"]
 
     video_path = VIDEO_DIR / f"{video_id}.mp4"
@@ -550,203 +1160,7 @@ def generate_scene_video(
     return video_id, video_path, last_frame_path
 
 
-def create_story_item(scene: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "scenario_display": scene["scenario_display"],
-        "sora_prompt": scene["sora_prompt"],
-        "choices": scene["choices"],
-        "choice_index": None,
-        "video_id": None,
-        "video_path": None,
-        "last_frame_path": None,
-        "planner_missing_prompt": scene.get("_planner_missing_prompt", False),
-        "planner_missing_prompt_reason": scene.get("_planner_missing_prompt_reason", ""),
-        "planner_raw_output": scene.get("_raw_planner_output", ""),
-        "planner_model": scene.get("_planner_model", ""),
-        "planner_stage": scene.get("_planner_stage", ""),
-    }
-
-
-def build_story_payload(story: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    payload: List[Dict[str, Any]] = []
-    for idx, step in enumerate(story, start=1):
-        video_url = None
-        if step.get("video_path"):
-            video_url = f"/media/videos/{Path(step['video_path']).name}"
-
-        poster_url = None
-        if step.get("last_frame_path"):
-            poster_url = f"/media/frames/{Path(step['last_frame_path']).name}"
-
-        payload.append(
-            {
-                "sceneNumber": idx,
-                "scenarioDisplay": step.get("scenario_display", ""),
-                "soraPrompt": step.get("sora_prompt", ""),
-                "choices": step.get("choices", []),
-                "choiceIndex": step.get("choice_index"),
-                "videoUrl": video_url,
-                "posterUrl": poster_url,
-                "videoId": step.get("video_id"),
-                "plannerMissingPrompt": step.get("planner_missing_prompt", False),
-                "plannerMissingPromptReason": step.get("planner_missing_prompt_reason", ""),
-            }
-        )
-    return payload
-
-
-def serialize_session(session_id: str, state: SessionState) -> SessionResponse:
-    story_payload = build_story_payload(state.story)
-    response = SessionResponse(
-        sessionId=session_id,
-        story=[StoryStepResponse(**item) for item in story_payload],
-        stepCount=state.step_count,
-        maxSteps=state.config.max_steps,
-        hasRemainingSteps=state.step_count < state.config.max_steps,
-    )
-    return response
-
-
-def get_session_or_404(session_id: str) -> SessionState:
-    state = SESSIONS.get(session_id)
-    if not state:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return state
-
-
-@app.get("/health")
-def healthcheck() -> Dict[str, str]:
-    return {"status": "ok"}
-
-
-@app.post("/api/session", response_model=SessionResponse)
-def create_session(payload: CreateSessionRequest) -> SessionResponse:
-    config = SessionConfig(
-        api_key=payload.api_key.strip(),
-        planner_model=payload.planner_model.strip() or "gpt-5",
-        sora_model=payload.sora_model.strip() or "sora-2",
-        video_size=payload.video_size.strip() or DEFAULT_VIDEO_SIZE,
-        base_prompt=payload.base_prompt.strip(),
-        max_steps=payload.max_steps,
-    )
-
-    if not config.api_key:
-        raise HTTPException(status_code=400, detail="API key is required")
-    if not config.base_prompt:
-        raise HTTPException(status_code=400, detail="Base prompt is required")
-
-    session_id = uuid4().hex
-    state = SessionState(config=config)
-    SESSIONS[session_id] = state
-
-    try:
-        scene = plan_initial_scene(
-            api_key=config.api_key,
-            base_prompt=config.base_prompt,
-            model=config.planner_model,
-        )
-        story_item = create_story_item(scene)
-
-        if not story_item["planner_missing_prompt"]:
-            video_id, video_path, last_frame_path = generate_scene_video(
-                api_key=config.api_key,
-                sora_prompt=story_item["sora_prompt"],
-                model=config.sora_model,
-                size=config.video_size,
-                seconds=DEFAULT_SECONDS,
-                input_reference=None,
-            )
-            story_item["video_id"] = video_id
-            story_item["video_path"] = str(video_path)
-            story_item["last_frame_path"] = str(last_frame_path)
-        else:
-            story_item["planner_missing_prompt"] = True
-
-        state.story.append(story_item)
-    except Exception as exc:
-        SESSIONS.pop(session_id, None)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return serialize_session(session_id, state)
-
-
-@app.get("/api/session")
-def list_sessions() -> Dict[str, Any]:
-    return {
-        "sessions": [
-            {
-                "sessionId": session_id,
-                "stepCount": state.step_count,
-                "maxSteps": state.config.max_steps,
-            }
-            for session_id, state in SESSIONS.items()
-        ]
-    }
-
-
-@app.get("/api/session/{session_id}", response_model=SessionResponse)
-def get_session(session_id: str) -> SessionResponse:
-    state = get_session_or_404(session_id)
-    return serialize_session(session_id, state)
-
-
-@app.post("/api/session/{session_id}/choice", response_model=SessionResponse)
-def advance_story(session_id: str, payload: ChoiceRequest) -> SessionResponse:
-    state = get_session_or_404(session_id)
-    with state.lock:
-        if not state.story:
-            raise HTTPException(status_code=400, detail="Session has not been initialized")
-
-        current = state.story[-1]
-        if current.get("choice_index") is not None:
-            raise HTTPException(status_code=400, detail="Current scene already has a recorded choice")
-
-        current["choice_index"] = payload.choice_index
-        chosen_choice = current["choices"][payload.choice_index]
-        state.step_count += 1
-
-        if state.step_count >= state.config.max_steps:
-            return serialize_session(session_id, state)
-
-        prior_sora_prompts = [step["sora_prompt"] for step in state.story]
-
-        try:
-            next_scene = plan_next_scene(
-                api_key=state.config.api_key,
-                base_prompt=state.config.base_prompt,
-                prior_sora_prompts=prior_sora_prompts,
-                chosen_choice=chosen_choice,
-                model=state.config.planner_model,
-            )
-            next_item = create_story_item(next_scene)
-
-            input_reference = None
-            if current.get("last_frame_path"):
-                input_reference = Path(current["last_frame_path"])
-
-            if not next_item["planner_missing_prompt"]:
-                video_id, video_path, last_frame_path = generate_scene_video(
-                    api_key=state.config.api_key,
-                    sora_prompt=next_item["sora_prompt"],
-                    model=state.config.sora_model,
-                    size=state.config.video_size,
-                    seconds=DEFAULT_SECONDS,
-                    input_reference=input_reference,
-                )
-                next_item["video_id"] = video_id
-                next_item["video_path"] = str(video_path)
-                next_item["last_frame_path"] = str(last_frame_path)
-            else:
-                next_item["planner_missing_prompt"] = True
-
-            state.story.append(next_item)
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
-
-    return serialize_session(session_id, state)
-
-
-if __name__ == "__main__":  # pragma: no cover - convenience for local dev
+if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

@@ -155,12 +155,20 @@
   text-transform: uppercase;
 }
 
-.timeline-status.open {
-  color: rgba(56, 189, 248, 0.85);
+.timeline-status.ready {
+  color: rgba(45, 212, 191, 0.85);
 }
 
-.timeline-status.locked {
-  color: rgba(96, 165, 250, 0.65);
+.timeline-status.queued {
+  color: rgba(234, 179, 8, 0.85);
+}
+
+.timeline-status.failed {
+  color: rgba(248, 113, 113, 0.9);
+}
+
+.timeline-status.pending {
+  color: rgba(148, 163, 184, 0.78);
 }
 
 .timeline-description {
