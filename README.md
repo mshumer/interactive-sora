@@ -2,7 +2,7 @@
 
 [![Follow on X](https://img.shields.io/twitter/follow/mattshumer_?style=social)](https://x.com/mattshumer_)
 
-[Be the first to know when I publish new AI builds + demos!](https://href.li/?https://cbyy8kpgxri.typeform.com/to/CsYODv0D)
+[Be the first to know when I publish new AI builds + demos!](https://tally.so/r/w2M17p)
 
 **Immersive choose-your-own adventure experiences powered by OpenAI Sora 2.**
 
