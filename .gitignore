@@ -3,6 +3,7 @@ __pycache__/
 sora_cyoa_frames/
 sora_cyoa_videos/
 prebaked_content/
+.venv/
 .env
 .vscode/
 .DS_Store
