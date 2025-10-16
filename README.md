@@ -2,6 +2,8 @@
 
 [![Follow on X](https://img.shields.io/twitter/follow/mattshumer_?style=social)](https://x.com/mattshumer_)
 
+[Be the first to know when I publish new AI builds + demos!](https://cbyy8kpgxri.typeform.com/to/CsYODv0D)
+
 **Immersive choose-your-own adventure experiences powered by OpenAI Sora 2.**
 
 Interactive Sora is an exploration of how real-time video generation can power interactive worlds. It's built as a choose-your-own-adventure system... every choice spins up a fresh Sora 2 sequence—turning player choices into responsive, explorable environments that morph with the player’s intent.
