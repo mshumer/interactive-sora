@@ -20,6 +20,7 @@ const ExperienceScreen = ({
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [choicesRevealActive, setChoicesRevealActive] = useState(false);
   const videoRef = useRef(null);
   const lastSceneIdRef = useRef(null);
 
@@ -40,6 +41,7 @@ const ExperienceScreen = ({
     setIsVideoLoading(hasVideo);
     setHasVideoEnded(!hasVideo);
     setAutoplayBlocked(false);
+    setChoicesRevealActive(!hasVideo);
 
     if (!hasVideo) return;
 
@@ -103,6 +105,7 @@ const ExperienceScreen = ({
 
   const handleVideoEnd = () => {
     setHasVideoEnded(true);
+    setChoicesRevealActive(true);
   };
 
   const handleVideoPlay = () => {
@@ -114,6 +117,7 @@ const ExperienceScreen = ({
     if (!videoRef.current) return;
     setAutoplayBlocked(false);
     setHasVideoEnded(false);
+    setChoicesRevealActive(false);
     videoRef.current.currentTime = 0;
     videoRef.current.play().catch((error) => {
       if (error?.name === "NotAllowedError") {
@@ -126,6 +130,12 @@ const ExperienceScreen = ({
 
   const handleLoadedData = () => {
     setIsVideoLoading(false);
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+    const duration = Number.isFinite(videoElement.duration) ? videoElement.duration : null;
+    if (duration !== null && duration <= 1) {
+      setChoicesRevealActive(true);
+    }
   };
 
   const handleTimelineSelect = (index) => {
@@ -137,6 +147,7 @@ const ExperienceScreen = ({
     const videoElement = videoRef.current;
     if (!videoElement) return;
     setAutoplayBlocked(false);
+    setChoicesRevealActive(false);
     const playPromise = videoElement.play();
     if (playPromise?.catch) {
       playPromise.catch((error) => {
@@ -147,8 +158,21 @@ const ExperienceScreen = ({
     }
   };
 
+  const handleTimeUpdate = () => {
+    if (choicesRevealActive) return;
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+    const duration = Number.isFinite(videoElement.duration) ? videoElement.duration : null;
+    if (!duration || duration <= 0) return;
+    const remaining = duration - videoElement.currentTime;
+    if (remaining <= 1) {
+      setChoicesRevealActive(true);
+    }
+  };
+
   const showLoader = isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading);
   const allowReplay = Boolean(videoSrc && hasVideoEnded);
+  const shouldShowChoiceDrawer = choicesRevealActive;
 
   if (!activeScene) {
     return (
@@ -189,6 +213,7 @@ const ExperienceScreen = ({
             onEnded={handleVideoEnd}
             onPlay={handleVideoPlay}
             onLoadedData={handleLoadedData}
+            onTimeUpdate={handleTimeUpdate}
           />
         ) : (
           <div className="video-placeholder">
@@ -241,7 +266,7 @@ const ExperienceScreen = ({
           </div>
         )}
 
-        <div className="choice-drawer visible">
+        <div className={`choice-drawer ${shouldShowChoiceDrawer ? "visible" : ""}`}>
           <div className="drawer-inner">
             <div className="drawer-header">
               <span className="status awaiting">Choose the next branch</span>
