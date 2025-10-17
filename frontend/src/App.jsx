@@ -54,6 +54,11 @@ const App = () => {
   const [hasSavedProgress, setHasSavedProgress] = useState(false);
   const isRestoringRef = useRef(false);
 
+  const fetchScene = useCallback(async (path) => {
+    const { data } = await api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path } });
+    return data;
+  }, []);
+
   const prefetchSceneAssets = useCallback((scene, cacheKey) => {
     if (!scene || typeof window === "undefined") return;
 
@@ -120,11 +125,6 @@ const App = () => {
     if (stored) {
       setApiKey(stored);
     }
-  }, []);
-
-  const fetchScene = useCallback(async (path) => {
-    const { data } = await api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path } });
-    return data;
   }, []);
 
   useEffect(() => {
