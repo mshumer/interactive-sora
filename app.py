@@ -1117,9 +1117,7 @@ Shot length: 8 seconds.
 Return JSON with keys: scenario_display, sora_prompt, choices (3).
 {guidance_section}
 """.strip()
-    logger.info("[planner] initial user_input=%s", user_input)
-    raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
-    logger.info("[planner] initial raw response=%s", raw[:2000])
+        raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
     scene = normalize_scene_payload(extract_first_json(raw))
     scene["_raw_planner_output"] = raw.strip()
     scene["_planner_model"] = model
@@ -1164,9 +1162,7 @@ preserving continuity (subjects, camera position, lighting, motion direction), u
 Return JSON with keys: scenario_display, sora_prompt, choices (3).
 {guidance_section}
 """.strip()
-    logger.info("[planner] continuation user_input=%s", user_input)
-    raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
-    logger.info("[planner] continuation raw=%s", raw[:2000])
+        raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
     scene = normalize_scene_payload(extract_first_json(raw))
     scene["_raw_planner_output"] = raw.strip()
     scene["_planner_model"] = model
