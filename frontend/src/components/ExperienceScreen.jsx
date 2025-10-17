@@ -51,6 +51,10 @@ const ExperienceScreen = ({
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
+    if (videoElement.readyState >= 2) {
+      setIsVideoLoading(false);
+    }
+
     if (isNewScene) {
       videoElement.currentTime = 0;
     }
@@ -108,6 +112,7 @@ const ExperienceScreen = ({
 
   const handleVideoPlay = () => {
     setHasVideoEnded(false);
+    setIsVideoLoading(false);
   };
 
   const handleReplay = () => {
@@ -149,6 +154,10 @@ const ExperienceScreen = ({
     setHasEnteredExperience(true);
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
+    setIsVideoLoading((prev) => {
+      if (!videoElement) return prev;
+      return videoElement.readyState < 2;
+    });
     if (!videoElement) return;
     videoElement.currentTime = 0;
     if (videoElement.readyState >= 2) {
