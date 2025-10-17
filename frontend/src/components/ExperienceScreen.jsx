@@ -62,13 +62,10 @@ const ExperienceScreen = ({
     }
 
     const preloadedPool = prefetchedVideos?.current;
-    const preloadedVideo = preloadedPool?.get(activeScene.path);
-    if (preloadedVideo && preloadedVideo.readyState >= 2) {
-      const source = preloadedVideo.currentSrc || preloadedVideo.src;
+    const preloadedEntry = preloadedPool?.get(activeScene.path);
+    if (preloadedEntry?.node?.readyState >= 2) {
+      const source = preloadedEntry.node.currentSrc || preloadedEntry.node.src;
       if (source && videoElement.src !== source) {
-        videoElement.pause();
-        videoElement.removeAttribute("src");
-        videoElement.load();
         videoElement.src = source;
       }
       try {
@@ -76,6 +73,7 @@ const ExperienceScreen = ({
       } catch (error) {
         // ignore seek issues on some browsers with streaming sources.
       }
+      preloadedEntry.teardown?.();
       preloadedPool?.delete(activeScene.path);
     }
 

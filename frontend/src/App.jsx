@@ -18,6 +18,24 @@ const buildAssetUrl = (value) => {
   return `${API_BASE_URL}${value}`;
 };
 
+let prefetchBin = null;
+
+const ensurePrefetchBin = () => {
+  if (typeof document === "undefined") return null;
+  if (prefetchBin && document.body.contains(prefetchBin)) {
+    return prefetchBin;
+  }
+  prefetchBin = document.createElement("div");
+  prefetchBin.id = "sora-prefetch-bin";
+  prefetchBin.style.position = "absolute";
+  prefetchBin.style.width = "0";
+  prefetchBin.style.height = "0";
+  prefetchBin.style.overflow = "hidden";
+  prefetchBin.style.opacity = "0";
+  document.body.appendChild(prefetchBin);
+  return prefetchBin;
+};
+
 const App = () => {
   const [worldInfo, setWorldInfo] = useState(null);
   const [story, setStory] = useState([]);
@@ -62,14 +80,36 @@ const App = () => {
     primeImage(scene.posterUrl);
 
     if (cacheKey && scene.videoUrl && !prefetchedVideos.current.has(cacheKey)) {
+      const url = buildAssetUrl(scene.videoUrl);
+      if (!url) return;
+
+      if (typeof fetch === "function") {
+        // Warm the browser cache explicitly; ignore failures.
+        fetch(url, { mode: "cors", credentials: "omit" }).catch(() => {});
+      }
+
+      const bin = ensurePrefetchBin();
+      if (!bin) return;
+
       const video = document.createElement("video");
       video.preload = "auto";
       video.crossOrigin = "anonymous";
       video.playsInline = true;
       video.muted = true;
-      video.src = buildAssetUrl(scene.videoUrl);
+      video.src = url;
+      video.style.display = "none";
+      bin.appendChild(video);
+
+      const teardown = () => {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+        video.remove();
+      };
+
+      const entry = { node: video, teardown };
+      prefetchedVideos.current.set(cacheKey, entry);
       video.load();
-      prefetchedVideos.current.set(cacheKey, video);
     }
   }, []);
 
@@ -329,6 +369,9 @@ const App = () => {
         try {
           prefetchedAssetUrls.current.clear();
           inFlightPrefetch.current.clear();
+          prefetchedVideos.current.forEach((entry) => {
+            entry?.teardown?.();
+          });
           prefetchedVideos.current.clear();
           setPrefetchedScenes({});
           const rootScene = await fetchScene("");
