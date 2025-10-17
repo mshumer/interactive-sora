@@ -8,7 +8,16 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./sora_world.db")
+raw_database_url = os.environ.get("DATABASE_URL", "sqlite:///./sora_world.db")
+
+# Automatically upgrade legacy PostgreSQL URLs to use the psycopg driver bundled in
+# requirements. This avoids needing the deprecated psycopg2 package at runtime.
+if raw_database_url.startswith("postgresql://"):
+    raw_database_url = raw_database_url.replace(
+        "postgresql://", "postgresql+psycopg://", 1
+    )
+
+DATABASE_URL = raw_database_url
 
 # Use check_same_thread=False for SQLite so background threads can access.
 connect_args = {}
