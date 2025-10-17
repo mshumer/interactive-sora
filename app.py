@@ -20,6 +20,10 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
+try:
+    from pydantic import ConfigDict
+except ImportError:  # pragma: no cover - Pydantic v1 fallback
+    ConfigDict = None
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -121,6 +125,11 @@ if isinstance(storage_client, LocalStorageClient):
 
 
 class SceneResponse(BaseModel):
+    if ConfigDict is not None:
+        model_config = ConfigDict(populate_by_name=True)
+    else:  # pragma: no cover - Pydantic v1 support
+        class Config:
+            allow_population_by_field_name = True
     world_id: str = Field(..., alias="worldId")
     path: str
     depth: int
@@ -144,6 +153,11 @@ class SceneResponse(BaseModel):
 
 
 class SceneGenerationRequest(BaseModel):
+    if ConfigDict is not None:
+        model_config = ConfigDict(populate_by_name=True)
+    else:  # pragma: no cover - Pydantic v1 support
+        class Config:
+            allow_population_by_field_name = True
     path: str = ""
     api_key: str = Field(..., alias="apiKey")
 
@@ -157,6 +171,11 @@ class SceneGenerationRequest(BaseModel):
 
 
 class WorldResponse(BaseModel):
+    if ConfigDict is not None:
+        model_config = ConfigDict(populate_by_name=True)
+    else:  # pragma: no cover - Pydantic v1 support
+        class Config:
+            allow_population_by_field_name = True
     world_id: str = Field(..., alias="worldId")
     base_prompt: str = Field(..., alias="basePrompt")
     planner_model: str = Field(..., alias="plannerModel")
@@ -165,6 +184,11 @@ class WorldResponse(BaseModel):
 
 
 class WorldMetricsResponse(BaseModel):
+    if ConfigDict is not None:
+        model_config = ConfigDict(populate_by_name=True)
+    else:  # pragma: no cover - Pydantic v1 support
+        class Config:
+            allow_population_by_field_name = True
     world_id: str = Field(..., alias="worldId")
     scene_count: int = Field(..., alias="sceneCount")
     ready_count: int = Field(..., alias="readyCount")
