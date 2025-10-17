@@ -338,7 +338,7 @@ def ensure_scene_exists(session: Session, world_id: str, path: str) -> Scene:
         status=SceneStatus.PENDING,
     )
     parent = parent_path(path)
-    if parent:
+    if parent is not None:
         scene.trigger_choice = None
     session.add(scene)
     session.flush()
@@ -721,7 +721,7 @@ def render_scene_video(
     video_id, video_path = None, None
     parent_last_frame: Optional[Path] = None
     parent = parent_path(path)
-    if parent:
+    if parent is not None:
         with session_scope() as session:
             parent_scene = (
                 session.execute(
