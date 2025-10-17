@@ -59,7 +59,9 @@ WORLD_ID = os.environ.get("WORLD_ID", "default")
 DEFAULT_WORLD_BASE_PROMPT = (
     "A multiverse adventure where shimmering portals splice iconic game-inspired realms together. "
     "Our protagonist is the Courier, an agile dimension runner collecting chronoglyph shards that stabilize reality. "
-    "Each portal deposits the Courier into a distinct world—neon Vice City highways, rune-lit gothic battlegrounds, clockwork fantasy metropolises—"
+    "We begin inside the Nexus Gate, a concentric chamber housing three unlabelled portals:"
+    " one amber-glass gateway echoing with synth bass, one cerulean rune vortex crackling with arcane energy, and one obsidian aperture breathing neon steam."
+    " Each portal deposits the Courier into a distinct world—neon Vice City highways, rune-lit gothic battlegrounds, clockwork fantasy metropolises—"
     "all remixing familiar vibes without naming trademarks. The Courier is guided by an AI companion, Luma, who tracks shard resonance."
     " The stakes: close the Cataclysm Rift by assembling three legendary relics hidden across worlds;"
     " each scene should propel the chase, reveal cross-world cause-and-effect, or introduce allies/enemies reacting to the Courier's interference."
@@ -82,6 +84,7 @@ DEFAULT_PROMPT_GUIDANCE = (
             "Quest Focus: We are chasing chronoglyph shards and the Cataclysm Rift. Each scene should reveal progress, a clue, or a complication tied to that quest.",
             "Allies & Foes: Introduce colorful companions or antagonists from different worlds reacting to portals; show how their abilities influence the beat.",
             "Hook: End with a striking twist (new world glimpsed, portal destabilising, relic reacting) that makes the next choice consequential.",
+            "Portal Hub: When at the Nexus Gate, surface three distinct unlabeled portals as the primary choices; once a world is entered, momentum should push forward until the player restarts.",
         ]
     )
 )

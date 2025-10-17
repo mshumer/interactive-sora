@@ -86,6 +86,7 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 - Active generations surface live progress so explorers can see how close a branch is to finishing.
 - Behind the scenes, each scene stores a state summary (generated with `gpt-5-mini`) so future branches carry forward the evolving world context.
 - Planner prompts now emphasise a full 8-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
+- The Nexus Gate opening beat presents three mysterious portals; hit **Restart** anytime to return there and choose a different world with instant playback of already-generated branches.
 
 ---
 
