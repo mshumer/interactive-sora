@@ -101,10 +101,11 @@ storage_client = build_storage_client()
 logger = logging.getLogger("sora_shared_world")
 if not logger.handlers:
     handler = logging.StreamHandler()
-    formatter = logging.Formatter("[%(levelname)s] %(message)s")
+    formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+level = logging.getLevelName(os.environ.get("LOG_LEVEL", "INFO"))
+logger.setLevel(level if isinstance(level, int) else logging.INFO)
 
 app = FastAPI(title=APP_TITLE)
 app.add_middleware(
@@ -372,6 +373,7 @@ def _update_scene_progress(world_id: str, path: str, progress: Optional[int]) ->
 def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) -> None:
     prompt = scene.get("sora_prompt") or ""
     if "Action Beat:" in prompt:
+        logger.info("[prompt] action beat already present")
         return
     candidate = fallback_choice or ""
     if not candidate:
@@ -384,6 +386,7 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
     if not candidate:
         candidate = "Trigger a dramatic cross-world portal event within 8 seconds."
     scene["sora_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
+    logger.info("[prompt] appended action beat: %s", candidate)
 
 
 def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
@@ -604,6 +607,7 @@ def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
         if idx is None or idx >= len(parent.choices):
             raise RuntimeError("Invalid choice index for path")
         chosen_choice = parent.choices[idx]
+        logger.info("[planner] continue world=%s path=%s choice=%s state_context=%s", world_id, path, chosen_choice, state_context)
         result = plan_next_scene(
             api_key=api_key,
             base_prompt=BASE_PROMPT,
@@ -726,12 +730,25 @@ def render_scene_video(
                 .scalars()
                 .first()
             )
+        if parent_scene:
+            logger.info("[continuity] parent scene world=%s parent_path=%s status=%s", world_id, parent, getattr(parent_scene, "status", None))
+        else:
+            logger.warning("[continuity] missing parent scene world=%s parent_path=%s", world_id, parent)
         if parent_scene and parent_scene.poster_url:
+            logger.info("[continuity] fetching last frame for world=%s parent_path=%s url=%s", world_id, parent or "root", parent_scene.poster_url)
             parent_last_frame = download_asset(parent_scene.poster_url, variant="poster")
+            if parent_last_frame and parent_last_frame.exists():
+                logger.info("[continuity] last frame ready at %s", parent_last_frame)
+            else:
+                logger.warning("[continuity] failed to obtain last frame for world=%s path=%s", world_id, path or "root")
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = Path(tmp_dir)
+            if parent_last_frame:
+                logger.info("[continuity] sending input_reference=%s", parent_last_frame)
+            else:
+                logger.info("[continuity] no input_reference available for world=%s path=%s", world_id, path or "root")
             video_job = sora_create_video(
                 api_key=api_key,
                 sora_prompt=sora_prompt,
@@ -767,7 +784,9 @@ def render_scene_video(
 def download_asset(stored_value: str, variant: str) -> Optional[Path]:
     resolved_url = _resolve_asset_url(stored_value, variant=variant)
     if not resolved_url:
+        logger.warning("[continuity] resolve failed for variant=%s value=%s", variant, stored_value)
         return None
+    logger.info("[continuity] downloading asset variant=%s url=%s", variant, resolved_url)
     try:
         response = requests.get(resolved_url, timeout=30)
         if response.status_code >= 400:
@@ -1087,7 +1106,9 @@ Shot length: 8 seconds.
 Return JSON with keys: scenario_display, sora_prompt, choices (3).
 {guidance_section}
 """.strip()
+    logger.info("[planner] initial user_input=%s", user_input)
     raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
+    logger.info("[planner] initial raw response=%s", raw[:2000])
     scene = normalize_scene_payload(extract_first_json(raw))
     scene["_raw_planner_output"] = raw.strip()
     scene["_planner_model"] = model
@@ -1132,7 +1153,9 @@ preserving continuity (subjects, camera position, lighting, motion direction), u
 Return JSON with keys: scenario_display, sora_prompt, choices (3).
 {guidance_section}
 """.strip()
+    logger.info("[planner] continuation user_input=%s", user_input)
     raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
+    logger.info("[planner] continuation raw=%s", raw[:2000])
     scene = normalize_scene_payload(extract_first_json(raw))
     scene["_raw_planner_output"] = raw.strip()
     scene["_planner_model"] = model
