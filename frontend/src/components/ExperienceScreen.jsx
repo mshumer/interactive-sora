@@ -14,14 +14,13 @@ const ExperienceScreen = ({
   onKeySubmit,
   onKeyCancel,
 }) => {
-  const { story, worldInfo, apiKey } = context;
+  const { story, worldInfo, apiKey, prefetchedVideos } = context;
   const [activeIndex, setActiveIndex] = useState(Math.max(story.length - 1, 0));
   const [hasVideoEnded, setHasVideoEnded] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [hasEnteredExperience, setHasEnteredExperience] = useState(false);
   const [choicesRevealActive, setChoicesRevealActive] = useState(false);
-  const [isSceneVisible, setIsSceneVisible] = useState(false);
   const [showPoster, setShowPoster] = useState(true);
   const videoRef = useRef(null);
   const lastSceneIdRef = useRef(null);
@@ -47,7 +46,6 @@ const ExperienceScreen = ({
     setIsVideoLoading(hasVideo);
     setHasVideoEnded(!hasVideo);
     setChoicesRevealActive(!hasVideo);
-    setIsSceneVisible(false);
     setShowPoster(Boolean(activeScene.posterUrl));
 
     if (!hasVideo) return;
@@ -63,7 +61,7 @@ const ExperienceScreen = ({
       videoElement.currentTime = 0;
     }
 
-    const preloadedPool = context.prefetchedVideos?.current;
+    const preloadedPool = prefetchedVideos?.current;
     const preloadedVideo = preloadedPool?.get(activeScene.path);
     if (preloadedVideo && preloadedVideo.readyState >= 2) {
       const source = preloadedVideo.currentSrc || preloadedVideo.src;
@@ -101,7 +99,7 @@ const ExperienceScreen = ({
     return () => {
       cancelled = true;
     };
-  }, [activeScene, hasEnteredExperience, context.prefetchedVideos]);
+  }, [activeScene, hasEnteredExperience, prefetchedVideos]);
 
   const videoSrc = useMemo(() => {
     if (!activeScene?.videoUrl) return null;
@@ -136,7 +134,6 @@ const ExperienceScreen = ({
     setHasVideoEnded(false);
     setIsVideoLoading(false);
     setShowPoster(false);
-    setIsSceneVisible(true);
   };
 
   const handleReplay = () => {
@@ -144,7 +141,6 @@ const ExperienceScreen = ({
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
     setShowPoster(Boolean(activeScene?.posterUrl));
-    setIsSceneVisible(false);
     videoRef.current.currentTime = 0;
     videoRef.current.play().catch((error) => {
       setHasVideoEnded(true);
@@ -180,7 +176,6 @@ const ExperienceScreen = ({
     setHasEnteredExperience(true);
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
-    setIsSceneVisible(false);
     setShowPoster(Boolean(activeScene?.posterUrl));
     setIsVideoLoading((prev) => {
       if (!videoElement) return prev;
@@ -251,7 +246,7 @@ const ExperienceScreen = ({
         {videoSrc ? (
           <video
             ref={videoRef}
-            className={`immersive-video ${isSceneVisible ? "visible" : "pending"}`}
+            className="immersive-video"
             src={videoSrc}
             poster={showPoster ? posterSrc || undefined : undefined}
             autoPlay

@@ -24,15 +24,6 @@
   height: 100%;
   object-fit: cover;
   filter: saturate(100%);
-  transition: opacity 200ms ease;
-}
-
-.immersive-video.pending {
-  opacity: 0;
-}
-
-.immersive-video.visible {
-  opacity: 1;
 }
 
 .video-placeholder {
