@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import ExperienceScreen from "./components/ExperienceScreen.jsx";
 
@@ -12,6 +12,12 @@ const api = axios.create({
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const buildAssetUrl = (value) => {
+  if (!value) return null;
+  if (/^https?:/i.test(value)) return value;
+  return `${API_BASE_URL}${value}`;
+};
+
 const App = () => {
   const [worldInfo, setWorldInfo] = useState(null);
   const [story, setStory] = useState([]);
@@ -22,6 +28,38 @@ const App = () => {
   const [globalError, setGlobalError] = useState(null);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [pendingChoice, setPendingChoice] = useState(null);
+  const [prefetchedScenes, setPrefetchedScenes] = useState({});
+  const prefetchedAssetUrls = useRef(new Set());
+  const inFlightPrefetch = useRef(new Set());
+
+  const prefetchSceneAssets = useCallback((scene) => {
+    if (!scene || typeof window === "undefined") return;
+
+    const record = prefetchedAssetUrls.current;
+
+    const primeVideo = (rawUrl) => {
+      const url = buildAssetUrl(rawUrl);
+      if (!url || record.has(url)) return;
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "video";
+      link.href = url;
+      link.crossOrigin = "anonymous";
+      document.head.appendChild(link);
+      record.add(url);
+    };
+
+    const primeImage = (rawUrl) => {
+      const url = buildAssetUrl(rawUrl);
+      if (!url || record.has(url)) return;
+      const image = new Image();
+      image.src = url;
+      record.add(url);
+    };
+
+    primeVideo(scene.videoUrl);
+    primeImage(scene.posterUrl);
+  }, []);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(API_KEY_STORAGE_KEY);
@@ -119,8 +157,27 @@ const App = () => {
       const childPath = activeScene.childrenPaths[choiceIndex] || buildChildPath(activeScene.path, choiceIndex);
 
       if (status === "ready") {
+        const cached = prefetchedScenes[childPath];
+        if (cached?.status === "ready") {
+          updateStoryWithScene(cached);
+          setPrefetchedScenes((prev) => {
+            const next = { ...prev };
+            delete next[childPath];
+            return next;
+          });
+          prefetchSceneAssets(cached);
+          return;
+        }
         try {
           const nextScene = await fetchScene(childPath);
+          if (nextScene?.status === "ready") {
+            prefetchSceneAssets(nextScene);
+            setPrefetchedScenes((prev) => {
+              const next = { ...prev };
+              delete next[childPath];
+              return next;
+            });
+          }
           updateStoryWithScene(nextScene);
         } catch (error) {
           const message = error.response?.data?.detail || error.message || "Failed to load scene.";
@@ -142,7 +199,7 @@ const App = () => {
         setGlobalError(message);
       }
     },
-    [apiKey, ensureSceneReady, fetchScene, story, updateStoryWithScene]
+    [apiKey, ensureSceneReady, fetchScene, story, updateStoryWithScene, prefetchedScenes, prefetchSceneAssets]
   );
 
   const handleApiKeySubmit = useCallback(
@@ -179,6 +236,37 @@ const App = () => {
     },
     []
   );
+
+  useEffect(() => {
+    const activeScene = story[story.length - 1];
+    if (!activeScene) return;
+
+    const statuses = activeScene.choicesStatus || [];
+    const children = activeScene.childrenPaths || [];
+
+    statuses.forEach((status, index) => {
+      if (status !== "ready") return;
+      const childPath = children[index] || buildChildPath(activeScene.path, index);
+      if (!childPath || prefetchedScenes[childPath] || inFlightPrefetch.current.has(childPath)) return;
+
+      inFlightPrefetch.current.add(childPath);
+      fetchScene(childPath)
+        .then((scene) => {
+          if (!scene || scene.status !== "ready") return;
+          setPrefetchedScenes((prev) => {
+            if (prev[childPath]) return prev;
+            return { ...prev, [childPath]: scene };
+          });
+          prefetchSceneAssets(scene);
+        })
+        .catch(() => {
+          // Swallow prefetch errors; user interaction will retry.
+        })
+        .finally(() => {
+          inFlightPrefetch.current.delete(childPath);
+        });
+    });
+  }, [story, fetchScene, prefetchedScenes, prefetchSceneAssets]);
 
   useEffect(() => {
     const latest = story[story.length - 1];
@@ -227,6 +315,9 @@ const App = () => {
       apiBaseUrl={API_BASE_URL}
       onRestart={async () => {
         try {
+          prefetchedAssetUrls.current.clear();
+          inFlightPrefetch.current.clear();
+          setPrefetchedScenes({});
           const rootScene = await fetchScene("");
           setStory([rootScene]);
           setActivePath(rootScene.path || "");
