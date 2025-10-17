@@ -73,7 +73,15 @@ const ExperienceScreen = ({
       } catch (error) {
         // ignore seek issues on some browsers with streaming sources.
       }
-      preloadedEntry.teardown?.();
+      const dispose = () => {
+        preloadedEntry.node.pause?.();
+        preloadedEntry.node.remove?.();
+      };
+      if (typeof queueMicrotask === "function") {
+        queueMicrotask(dispose);
+      } else {
+        setTimeout(dispose, 0);
+      }
       preloadedPool?.delete(activeScene.path);
     }
 

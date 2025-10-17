@@ -83,11 +83,6 @@ const App = () => {
       const url = buildAssetUrl(scene.videoUrl);
       if (!url) return;
 
-      if (typeof fetch === "function") {
-        // Warm the browser cache explicitly; ignore failures.
-        fetch(url, { mode: "cors", credentials: "omit" }).catch(() => {});
-      }
-
       const bin = ensurePrefetchBin();
       if (!bin) return;
 
@@ -100,15 +95,7 @@ const App = () => {
       video.style.display = "none";
       bin.appendChild(video);
 
-      const teardown = () => {
-        video.pause();
-        video.removeAttribute("src");
-        video.load();
-        video.remove();
-      };
-
-      const entry = { node: video, teardown };
-      prefetchedVideos.current.set(cacheKey, entry);
+      prefetchedVideos.current.set(cacheKey, { node: video });
       video.load();
     }
   }, []);
@@ -370,7 +357,8 @@ const App = () => {
           prefetchedAssetUrls.current.clear();
           inFlightPrefetch.current.clear();
           prefetchedVideos.current.forEach((entry) => {
-            entry?.teardown?.();
+            entry?.node?.pause?.();
+            entry?.node?.remove?.();
           });
           prefetchedVideos.current.clear();
           setPrefetchedScenes({});
