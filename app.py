@@ -789,7 +789,9 @@ def download_asset(stored_value: str, variant: str) -> Optional[Path]:
     logger.info("[continuity] downloading asset variant=%s url=%s", variant, resolved_url)
     try:
         response = requests.get(resolved_url, timeout=30)
+        logger.info("[continuity] download status=%s url=%s", response.status_code, resolved_url)
         if response.status_code >= 400:
+            logger.warning("[continuity] download failed status=%s body=%s", response.status_code, response.text[:200])
             return None
         suffix = Path(resolved_url).suffix or ".jpg"
         fd, tmp_path = tempfile.mkstemp(suffix=suffix)

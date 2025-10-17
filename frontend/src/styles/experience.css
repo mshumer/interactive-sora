@@ -131,6 +131,34 @@
   transform: translateY(-3px);
 }
 
+.autoplay-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.55);
+  z-index: 4;
+}
+
+.autoplay-button {
+  padding: 1rem 2.4rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.88), rgba(236, 72, 153, 0.88));
+  color: rgba(248, 250, 252, 0.96);
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: 0 22px 65px rgba(14, 165, 233, 0.42);
+  transition: transform 160ms ease;
+}
+
+.autoplay-button:hover {
+  transform: translateY(-3px);
+}
+
 .choice-drawer {
   position: absolute;
   left: 50%;

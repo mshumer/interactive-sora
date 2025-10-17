@@ -19,7 +19,9 @@ const ExperienceScreen = ({
   const [hasVideoEnded, setHasVideoEnded] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const videoRef = useRef(null);
+  const lastSceneIdRef = useRef(null);
 
   useEffect(() => {
     if (!story.length) return;
@@ -33,14 +35,45 @@ const ExperienceScreen = ({
 
   useEffect(() => {
     if (!activeScene) return;
-    setIsVideoLoading(Boolean(activeScene.videoUrl));
-    setHasVideoEnded(!activeScene.videoUrl);
-    if (activeScene.videoUrl && videoRef.current) {
-      const playPromise = videoRef.current.play();
-      if (playPromise?.catch) {
-        playPromise.catch(() => setHasVideoEnded(true));
-      }
+
+    const hasVideo = Boolean(activeScene.videoUrl);
+    setIsVideoLoading(hasVideo);
+    setHasVideoEnded(!hasVideo);
+    setAutoplayBlocked(false);
+
+    if (!hasVideo) return;
+
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const sceneIdentity = activeScene.path || activeScene.videoUrl;
+    const isNewScene = lastSceneIdRef.current !== sceneIdentity;
+    lastSceneIdRef.current = sceneIdentity;
+
+    if (isNewScene) {
+      videoElement.currentTime = 0;
     }
+
+    let cancelled = false;
+
+    const tryPlay = async () => {
+      try {
+        await videoElement.play();
+      } catch (error) {
+        if (cancelled) return;
+        if (error?.name === "NotAllowedError") {
+          setAutoplayBlocked(true);
+          return;
+        }
+        // Leave the scene ready for a manual play without marking it as ended.
+      }
+    };
+
+    tryPlay();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeScene]);
 
   const videoSrc = useMemo(() => {
@@ -64,6 +97,7 @@ const ExperienceScreen = ({
 
   const handleChoice = (index) => {
     if (!canChoose) return;
+    setAutoplayBlocked(false);
     onMakeChoice(index);
   };
 
@@ -71,15 +105,46 @@ const ExperienceScreen = ({
     setHasVideoEnded(true);
   };
 
+  const handleVideoPlay = () => {
+    setHasVideoEnded(false);
+    setAutoplayBlocked(false);
+  };
+
   const handleReplay = () => {
     if (!videoRef.current) return;
+    setAutoplayBlocked(false);
     setHasVideoEnded(false);
     videoRef.current.currentTime = 0;
-    videoRef.current.play().catch(() => setHasVideoEnded(true));
+    videoRef.current.play().catch((error) => {
+      if (error?.name === "NotAllowedError") {
+        setAutoplayBlocked(true);
+        return;
+      }
+      setHasVideoEnded(true);
+    });
   };
 
   const handleLoadedData = () => {
     setIsVideoLoading(false);
+  };
+
+  const handleTimelineSelect = (index) => {
+    setAutoplayBlocked(false);
+    setActiveIndex(index);
+  };
+
+  const handleResumePlayback = () => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+    setAutoplayBlocked(false);
+    const playPromise = videoElement.play();
+    if (playPromise?.catch) {
+      playPromise.catch((error) => {
+        if (error?.name === "NotAllowedError") {
+          setAutoplayBlocked(true);
+        }
+      });
+    }
   };
 
   const showLoader = isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading);
@@ -122,7 +187,7 @@ const ExperienceScreen = ({
             playsInline
             controls={false}
             onEnded={handleVideoEnd}
-            onPlay={() => setHasVideoEnded(false)}
+            onPlay={handleVideoPlay}
             onLoadedData={handleLoadedData}
           />
         ) : (
@@ -150,7 +215,14 @@ const ExperienceScreen = ({
           <button type="button" className="control-button" onClick={() => onPromptForKey(undefined)}>
             {apiKey ? "Update API Key" : "Add API Key"}
           </button>
-          <button type="button" className="control-button" onClick={onRestart}>
+          <button
+            type="button"
+            className="control-button"
+            onClick={() => {
+              setAutoplayBlocked(false);
+              onRestart();
+            }}
+          >
             Restart
           </button>
         </div>
@@ -159,6 +231,14 @@ const ExperienceScreen = ({
           <button type="button" className="replay-float" onClick={handleReplay}>
             Replay Scene
           </button>
+        )}
+
+        {autoplayBlocked && videoSrc && (
+          <div className="autoplay-overlay">
+            <button type="button" className="autoplay-button" onClick={handleResumePlayback}>
+              Tap to Play
+            </button>
+          </div>
         )}
 
         <div className="choice-drawer visible">
@@ -196,7 +276,7 @@ const ExperienceScreen = ({
         <Timeline
           story={story}
           activeIndex={activeIndex}
-          onSelect={(index) => setActiveIndex(index)}
+          onSelect={handleTimelineSelect}
           apiBaseUrl={apiBaseUrl}
           isOpen={showStoryboard}
           onClose={() => setShowStoryboard(false)}

@@ -54,7 +54,7 @@ class R2StorageClient(StorageClient):
             endpoint_url=endpoint,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
-            config=Config(signature_version="s3v4"),
+            config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
         )
 
     def upload(self, video_path: Path, poster_path: Path, *, key_prefix: str) -> StoredAsset:
