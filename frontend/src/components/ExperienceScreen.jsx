@@ -19,7 +19,6 @@ const ExperienceScreen = ({
   const [hasVideoEnded, setHasVideoEnded] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const [isMuted] = useState(true);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -122,7 +121,6 @@ const ExperienceScreen = ({
             autoPlay
             playsInline
             controls={false}
-            muted={isMuted}
             onEnded={handleVideoEnd}
             onPlay={() => setHasVideoEnded(false)}
             onLoadedData={handleLoadedData}
