@@ -88,15 +88,27 @@ const App = () => {
 
       const video = document.createElement("video");
       video.preload = "auto";
-      video.crossOrigin = "anonymous";
       video.playsInline = true;
       video.muted = true;
       video.src = url;
       video.style.display = "none";
       bin.appendChild(video);
 
-      prefetchedVideos.current.set(cacheKey, { node: video });
-      video.load();
+      const cleanup = () => {
+        video.pause();
+        video.remove();
+      };
+
+      video.addEventListener("error", cleanup, { once: true });
+
+      prefetchedVideos.current.set(cacheKey, { node: video, cleanup });
+      // load() schedules network fetch; ignore promise.
+      try {
+        video.load();
+      } catch (error) {
+        cleanup();
+        prefetchedVideos.current.delete(cacheKey);
+      }
     }
   }, []);
 
@@ -357,8 +369,7 @@ const App = () => {
           prefetchedAssetUrls.current.clear();
           inFlightPrefetch.current.clear();
           prefetchedVideos.current.forEach((entry) => {
-            entry?.node?.pause?.();
-            entry?.node?.remove?.();
+            entry?.cleanup?.();
           });
           prefetchedVideos.current.clear();
           setPrefetchedScenes({});

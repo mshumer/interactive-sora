@@ -73,10 +73,7 @@ const ExperienceScreen = ({
       } catch (error) {
         // ignore seek issues on some browsers with streaming sources.
       }
-      const dispose = () => {
-        preloadedEntry.node.pause?.();
-        preloadedEntry.node.remove?.();
-      };
+      const dispose = preloadedEntry.cleanup || (() => {});
       if (typeof queueMicrotask === "function") {
         queueMicrotask(dispose);
       } else {
