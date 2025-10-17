@@ -800,8 +800,10 @@ def download_asset(stored_value: str, variant: str) -> Optional[Path]:
         tmp = Path(tmp_path)
         with tmp.open("wb") as fh:
             fh.write(response.content)
+        logger.info("[continuity] download saved to %s", tmp)
         return tmp
-    except Exception:
+    except Exception as exc:
+        logger.warning("[continuity] exception downloading asset: %s", exc)
         return None
 
 
