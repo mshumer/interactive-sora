@@ -180,6 +180,33 @@ const App = () => {
     []
   );
 
+  useEffect(() => {
+    const latest = story[story.length - 1];
+    if (!latest) return undefined;
+    if (latest.status !== "queued") return undefined;
+    if (isGenerating || isPolling) return undefined;
+
+    let cancelled = false;
+    const watch = async () => {
+      try {
+        const finished = await pollForScene(latest.path || "", updateStoryWithScene);
+        if (!cancelled && finished) {
+          updateStoryWithScene(finished);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error?.response?.data?.detail || error?.message || "Failed to load scene.";
+          setGlobalError(message);
+        }
+      }
+    };
+
+    watch();
+    return () => {
+      cancelled = true;
+    };
+  }, [story, isGenerating, isPolling, pollForScene, updateStoryWithScene]);
+
   const context = useMemo(
     () => ({
       worldInfo,
