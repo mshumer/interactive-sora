@@ -38,6 +38,7 @@ class SceneNode:
     scenario_display: str
     sora_prompt: str
     choices: List[str]
+    choices_short: List[str]
     video_relpath: Optional[str]
     poster_relpath: Optional[str]
     children: List["SceneNode"] = field(default_factory=list)
@@ -49,6 +50,7 @@ class SceneNode:
             "scenarioDisplay": self.scenario_display,
             "soraPrompt": self.sora_prompt,
             "choices": self.choices,
+            "choicesShort": self.choices_short,
             "video": self.video_relpath,
             "poster": self.poster_relpath,
             "children": [child.to_dict() for child in self.children],
@@ -185,6 +187,7 @@ def build_tree(
         scenario_display=scene["scenario_display"],
         sora_prompt=scene["sora_prompt"],
         choices=scene["choices"],
+        choices_short=scene["choices_short"],
         video_relpath=video_relpath,
         poster_relpath=poster_relpath,
     )

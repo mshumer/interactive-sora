@@ -14,7 +14,7 @@ const ExperienceScreen = ({
   onKeySubmit,
   onKeyCancel,
 }) => {
-  const { story, worldInfo, apiKey, prefetchedVideos } = context;
+  const { story, worldInfo, apiKey, prefetchedVideos, hasSavedProgress } = context;
   const [activeIndex, setActiveIndex] = useState(Math.max(story.length - 1, 0));
   const [hasVideoEnded, setHasVideoEnded] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
@@ -117,12 +117,23 @@ const ExperienceScreen = ({
     return `${apiBaseUrl}${activeScene.posterUrl}`;
   }, [activeScene?.posterUrl, apiBaseUrl]);
 
-  const choices = activeScene?.choices || [];
+  const rawChoices = Array.isArray(activeScene?.choices) ? activeScene.choices : [];
+  const shortChoices = Array.isArray(activeScene?.choicesShort) ? activeScene.choicesShort : [];
+  const hasChoices = rawChoices.length > 0;
+  const choices = hasChoices
+    ? rawChoices.map((choice, index) => {
+        const rawShort = shortChoices[index];
+        const trimmedShort = typeof rawShort === "string" ? rawShort.trim() : "";
+        if (trimmedShort) return trimmedShort;
+        const trimmedLong = typeof choice === "string" ? choice.trim() : String(choice ?? "").trim();
+        return trimmedLong || `Choice ${index + 1}`;
+      })
+    : [];
   const choicesStatus = activeScene?.choicesStatus || [];
   const isQueued = activeScene?.status === "queued";
   const progress = typeof activeScene?.progress === "number" ? activeScene.progress : null;
 
-  const canChoose = Boolean(activeScene && choices.length && !isGenerating);
+  const canChoose = Boolean(activeScene && hasChoices && !isGenerating);
 
   const handleChoice = (index) => {
     if (!canChoose) return;
@@ -315,13 +326,18 @@ const ExperienceScreen = ({
               <span className="start-screen__eyebrow">Shared World Prelude</span>
               <h1 className="start-screen__headline">{worldTitle}</h1>
               <p className="start-screen__body">{worldDescription}</p>
+              {hasSavedProgress && activeScene && (
+                <p className="start-screen__resume">Ready to continue at Scene {(activeIndex + 1)
+                  .toString()
+                  .padStart(2, "0")}</p>
+              )}
               <div className="start-screen__chips">
                 <span className="start-chip">Dynamic Sora Scenes</span>
                 <span className="start-chip">Branching Story Paths</span>
                 <span className="start-chip">Your Decisions Matter</span>
               </div>
               <button type="button" className="start-screen__cta" onClick={handleExperienceStart}>
-                Begin Experience
+                {hasSavedProgress ? "Continue Experience" : "Begin Experience"}
               </button>
               <p className="start-screen__hint">Sound on · Best viewed fullscreen</p>
             </div>
@@ -339,9 +355,10 @@ const ExperienceScreen = ({
                   const status = choicesStatus[index] || "pending";
                   const highlight = status === "ready";
                   const showStatusBadge = status === "queued" || status === "failed";
+                  const keySeed = rawChoices[index] || choice || index;
                   return (
                     <button
-                      key={`${choice}-${index}`}
+                      key={`${keySeed}-${index}`}
                       type="button"
                       className={`choice-pod ${highlight ? "ready" : ""} ${status}`}
                       disabled={isGenerating}

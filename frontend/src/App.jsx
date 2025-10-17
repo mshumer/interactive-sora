@@ -5,6 +5,7 @@ import ExperienceScreen from "./components/ExperienceScreen.jsx";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const WORLD_ID = import.meta.env.VITE_WORLD_ID || "default";
 const API_KEY_STORAGE_KEY = "sora_shared_world_api_key";
+const PROGRESS_STORAGE_KEY = `sora_shared_world_progress_${WORLD_ID}`;
 
 const api = axios.create({
   baseURL: API_BASE_URL || undefined,
@@ -50,6 +51,8 @@ const App = () => {
   const prefetchedAssetUrls = useRef(new Set());
   const prefetchedVideos = useRef(new Map());
   const inFlightPrefetch = useRef(new Set());
+  const [hasSavedProgress, setHasSavedProgress] = useState(false);
+  const isRestoringRef = useRef(false);
 
   const prefetchSceneAssets = useCallback((scene, cacheKey) => {
     if (!scene || typeof window === "undefined") return;
@@ -110,13 +113,18 @@ const App = () => {
         prefetchedVideos.current.delete(cacheKey);
       }
     }
-  }, []);
+  }, [fetchScene]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(API_KEY_STORAGE_KEY);
     if (stored) {
       setApiKey(stored);
     }
+  }, []);
+
+  const fetchScene = useCallback(async (path) => {
+    const { data } = await api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path } });
+    return data;
   }, []);
 
   useEffect(() => {
@@ -126,16 +134,61 @@ const App = () => {
           api.get(`/worlds/${WORLD_ID}`),
           api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path: "" } }),
         ]);
+        const rootScene = rootRes.data;
+        const rootPath = rootScene.path || "";
+        let initialStory = [rootScene];
+        let initialActivePath = rootPath;
+        let restored = false;
+
+        if (typeof window !== "undefined") {
+          const stored = window.localStorage.getItem(PROGRESS_STORAGE_KEY);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              const paths = Array.isArray(parsed?.paths) ? parsed.paths : [];
+              const active = typeof parsed?.activePath === "string" ? parsed.activePath : rootPath;
+              const trail = paths.filter((value) => typeof value === "string" && value !== "");
+
+              if (trail.length) {
+                isRestoringRef.current = true;
+                const composed = [rootScene];
+                for (const path of trail) {
+                  if (!path || path === rootPath) continue;
+                  try {
+                    const scene = await fetchScene(path);
+                    if (!scene || scene.status !== "ready") {
+                      break;
+                    }
+                    composed.push(scene);
+                  } catch (error) {
+                    break;
+                  }
+                }
+                if (composed.length > 1) {
+                  initialStory = composed;
+                  initialActivePath = active || composed[composed.length - 1].path || rootPath;
+                  restored = true;
+                }
+              }
+            } catch (error) {
+              // Ignore malformed stored progress.
+            } finally {
+              isRestoringRef.current = false;
+            }
+          }
+        }
+
         setWorldInfo(worldRes.data);
-        setStory([rootRes.data]);
-        setActivePath(rootRes.data.path || "");
+        setStory(initialStory);
+        setActivePath(initialActivePath);
+        setHasSavedProgress(restored);
       } catch (error) {
         const message = error.response?.data?.detail || error.message || "Failed to load world.";
         setGlobalError(message);
       }
     };
     bootstrap();
-  }, []);
+  }, [fetchScene]);
 
   const updateStoryWithScene = useCallback((scene) => {
     setStory((prev) => {
@@ -146,10 +199,26 @@ const App = () => {
     setActivePath(scene.path);
   }, []);
 
-  const fetchScene = useCallback(async (path) => {
-    const { data } = await api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path } });
-    return data;
-  }, []);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!story.length) return;
+    if (isRestoringRef.current) return;
+
+    const paths = story.map((scene) => scene.path || "");
+    const payload = {
+      paths,
+      activePath: activePath || "",
+      timestamp: Date.now(),
+    };
+
+    try {
+      window.localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(payload));
+      const hasProgress = paths.length > 1 || (payload.activePath && payload.activePath !== "");
+      setHasSavedProgress(hasProgress);
+    } catch (error) {
+      // Ignore storage failures (private mode, quota, etc.).
+    }
+  }, [story, activePath]);
 
   const pollForScene = useCallback(async (path, onUpdate) => {
     setIsPolling(true);
@@ -353,8 +422,9 @@ const App = () => {
       apiKey,
       isPolling,
       prefetchedVideos,
+      hasSavedProgress,
     }),
-    [worldInfo, story, activePath, apiKey, isPolling]
+    [worldInfo, story, activePath, apiKey, isPolling, hasSavedProgress]
   );
 
   return (
@@ -373,6 +443,10 @@ const App = () => {
           });
           prefetchedVideos.current.clear();
           setPrefetchedScenes({});
+          if (typeof window !== "undefined") {
+            window.localStorage.removeItem(PROGRESS_STORAGE_KEY);
+          }
+          setHasSavedProgress(false);
           const rootScene = await fetchScene("");
           setStory([rootScene]);
           setActivePath(rootScene.path || "");

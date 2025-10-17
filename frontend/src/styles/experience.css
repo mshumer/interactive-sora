@@ -191,6 +191,14 @@
   max-width: 54ch;
 }
 
+.start-screen__resume {
+  margin: 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(165, 180, 252, 0.9);
+}
+
 .start-screen__chips {
   display: flex;
   flex-wrap: wrap;

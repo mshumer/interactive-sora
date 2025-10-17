@@ -42,6 +42,7 @@ class Scene(Base):
     scenario_display = Column(Text, nullable=True)
     sora_prompt = Column(Text, nullable=True)
     choices = Column(JSON_TYPE, nullable=True)
+    choices_short = Column(JSON_TYPE, nullable=True)
     trigger_choice = Column(Text, nullable=True)
     video_url = Column(Text, nullable=True)
     poster_url = Column(Text, nullable=True)

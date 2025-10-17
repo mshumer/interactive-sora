@@ -129,6 +129,7 @@ class SceneResponse(BaseModel):
     sora_prompt: Optional[str] = Field(None, alias="soraPrompt")
     trigger_choice: Optional[str] = Field(None, alias="triggerChoice")
     choices: List[str] = Field(default_factory=list)
+    choices_short: List[str] = Field(default_factory=list, alias="choicesShort")
     choices_status: List[str] = Field(default_factory=list, alias="choicesStatus")
     children_paths: List[str] = Field(default_factory=list, alias="childrenPaths")
     video_url: Optional[str] = Field(None, alias="videoUrl")
@@ -391,7 +392,22 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
 
 
 def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
-    choices = scene.choices or []
+    choices = scene.choices if isinstance(scene.choices, list) else []
+    choices_short = scene.choices_short if isinstance(scene.choices_short, list) else []
+    if not choices_short:
+        choices_short = list(choices)
+    else:
+        normalized_short: List[str] = []
+        for idx in range(len(choices)):
+            short_value = choices_short[idx] if idx < len(choices_short) else None
+            long_value = choices[idx] if idx < len(choices) else None
+            candidate = (short_value or "").strip()
+            if not candidate and long_value is not None:
+                candidate = str(long_value).strip()
+            if not candidate:
+                candidate = f"Choice {idx + 1}"
+            normalized_short.append(candidate)
+        choices_short = normalized_short
     child_statuses: List[str] = []
     child_paths: List[str] = []
     for idx in range(len(choices) or 3):
@@ -415,7 +431,8 @@ def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
         scenarioDisplay=scene.scenario_display,
         soraPrompt=scene.sora_prompt,
         triggerChoice=scene.trigger_choice,
-        choices=choices if isinstance(choices, list) else [],
+        choices=choices,
+        choices_short=choices_short,
         choicesStatus=child_statuses,
         childrenPaths=child_paths,
         videoUrl=_resolve_asset_url(scene.video_url, variant="video"),
@@ -531,6 +548,7 @@ def _generate_scene_inner(
         scene.scenario_display = planner_result["scenario_display"]
         scene.sora_prompt = planner_result["sora_prompt"]
         scene.choices = planner_result["choices"]
+        scene.choices_short = planner_result.get("choices_short")
         scene.planner_model = PLANNER_MODEL
         scene.planner_raw = planner_result.get("_raw_planner_output")
         if isinstance(storage_client, LocalStorageClient):
@@ -896,7 +914,8 @@ Your job:
   {
     "scenario_display": "A short paragraph (<= 120 words) narrating the current scene to show in the UI.",
     "sora_prompt": "<A detailed Sora prompt for generating an 8-second video.>",
-    "choices": ["<choice 1>", "<choice 2>", "<choice 3>"]
+    "choices": ["<choice 1>", "<choice 2>", "<choice 3>"],
+    "choices_short": ["<concise choice 1>", "<concise choice 2>", "<concise choice 3>"]
   }
 
 Rules:
@@ -919,7 +938,8 @@ Rules:
 4) Choices:
    - Provide exactly three distinct options for what the player can do next.
    - Make each option feasible in the next short shot, and clearly different in intent.
-   - Keep each choice concise (<= 22 words).
+   - Keep each entry in `choices` descriptive yet punchy (<= 22 words) to guide planning and video prompts.
+   - Provide a matching `choices_short` array: same order, each entry <= 12 words, written as an imperative teaser the player reads in the UI.
    - Aim for options that open visibly different paths (new discoveries, escalations, or dramatic reactions); avoid three small variations of the same move.
 
 5) Multiverse context:
@@ -1019,6 +1039,14 @@ def normalize_scene_payload(scene: Dict[str, Any]) -> Dict[str, Any]:
         "shotPrompt",
     ]
     choices_keys = ["choices", "options", "next_choices", "actions", "nextOptions"]
+    choices_short_keys = [
+        "choices_short",
+        "choicesShort",
+        "concise_choices",
+        "conciseChoices",
+        "short_choices",
+        "shortChoices",
+    ]
 
     scenario_display = _pick(scenario_display_keys)
     if isinstance(scenario_display, list):
@@ -1093,10 +1121,31 @@ def normalize_scene_payload(scene: Dict[str, Any]) -> Dict[str, Any]:
     if len(choices) > 3:
         choices = choices[:3]
 
+    raw_choices_short = _pick(choices_short_keys)
+    choices_short: List[str] = []
+    if isinstance(raw_choices_short, list):
+        choices_short = [str(choice).strip() for choice in raw_choices_short if str(choice).strip()]
+    elif isinstance(raw_choices_short, str):
+        fragments = re.split(r"[\n|]", raw_choices_short)
+        choices_short = [frag.strip(" •-\t").strip() for frag in fragments if frag.strip()]
+
+    if choices:
+        while len(choices_short) < len(choices):
+            fallback = choices[len(choices_short)]
+            choices_short.append(str(fallback).strip())
+        if len(choices_short) > len(choices):
+            choices_short = choices_short[: len(choices)]
+    else:
+        while len(choices_short) < 3:
+            choices_short.append(f"Choice {len(choices_short) + 1}")
+        if len(choices_short) > 3:
+            choices_short = choices_short[:3]
+
     normalized = dict(scene)
     normalized["scenario_display"] = scenario_display
     normalized["sora_prompt"] = sora_prompt
     normalized["choices"] = choices
+    normalized["choices_short"] = choices_short
     normalized["_planner_missing_prompt"] = sora_prompt_missing
     normalized["_planner_missing_prompt_reason"] = sora_prompt_missing_reason
     return normalized
@@ -1114,7 +1163,7 @@ BASE PROMPT:
 {base_prompt}
 
 Shot length: 8 seconds.
-Return JSON with keys: scenario_display, sora_prompt, choices (3).
+Return JSON with keys: scenario_display, sora_prompt, choices (3), choices_short (3).
 {guidance_section}
 """.strip()
     raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
@@ -1159,7 +1208,7 @@ PLAYER'S CHOSEN ACTION TO CONTINUE:
 Note: The next 8-second shot MUST begin exactly from the final frame of the previous shot,
 preserving continuity (subjects, camera position, lighting, motion direction), unless the chosen action implies a change.
 
-Return JSON with keys: scenario_display, sora_prompt, choices (3).
+Return JSON with keys: scenario_display, sora_prompt, choices (3), choices_short (3).
 {guidance_section}
 """.strip()
     raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)

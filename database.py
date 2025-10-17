@@ -56,6 +56,7 @@ def _ensure_schema() -> None:
         "ALTER TABLE scenes ADD COLUMN progress INTEGER",
         "ALTER TABLE scenes ADD COLUMN progress_updated_at TIMESTAMP",
         "ALTER TABLE scenes ADD COLUMN state_summary TEXT",
+        "ALTER TABLE scenes ADD COLUMN choices_short JSON",
     ]
     with engine.begin() as conn:
         for stmt in statements:
