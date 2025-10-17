@@ -21,6 +21,8 @@ const ExperienceScreen = ({
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [hasEnteredExperience, setHasEnteredExperience] = useState(false);
   const [choicesRevealActive, setChoicesRevealActive] = useState(false);
+  const [isSceneVisible, setIsSceneVisible] = useState(false);
+  const [showPoster, setShowPoster] = useState(true);
   const videoRef = useRef(null);
   const lastSceneIdRef = useRef(null);
 
@@ -45,6 +47,8 @@ const ExperienceScreen = ({
     setIsVideoLoading(hasVideo);
     setHasVideoEnded(!hasVideo);
     setChoicesRevealActive(!hasVideo);
+    setIsSceneVisible(false);
+    setShowPoster(Boolean(activeScene.posterUrl));
 
     if (!hasVideo) return;
 
@@ -57,6 +61,24 @@ const ExperienceScreen = ({
 
     if (isNewScene) {
       videoElement.currentTime = 0;
+    }
+
+    const preloadedPool = context.prefetchedVideos?.current;
+    const preloadedVideo = preloadedPool?.get(activeScene.path);
+    if (preloadedVideo && preloadedVideo.readyState >= 2) {
+      const source = preloadedVideo.currentSrc || preloadedVideo.src;
+      if (source && videoElement.src !== source) {
+        videoElement.pause();
+        videoElement.removeAttribute("src");
+        videoElement.load();
+        videoElement.src = source;
+      }
+      try {
+        videoElement.currentTime = 0;
+      } catch (error) {
+        // ignore seek issues on some browsers with streaming sources.
+      }
+      preloadedPool?.delete(activeScene.path);
     }
 
     if (!hasEnteredExperience) {
@@ -79,7 +101,7 @@ const ExperienceScreen = ({
     return () => {
       cancelled = true;
     };
-  }, [activeScene, hasEnteredExperience]);
+  }, [activeScene, hasEnteredExperience, context.prefetchedVideos]);
 
   const videoSrc = useMemo(() => {
     if (!activeScene?.videoUrl) return null;
@@ -113,12 +135,16 @@ const ExperienceScreen = ({
   const handleVideoPlay = () => {
     setHasVideoEnded(false);
     setIsVideoLoading(false);
+    setShowPoster(false);
+    setIsSceneVisible(true);
   };
 
   const handleReplay = () => {
     if (!videoRef.current) return;
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
+    setShowPoster(Boolean(activeScene?.posterUrl));
+    setIsSceneVisible(false);
     videoRef.current.currentTime = 0;
     videoRef.current.play().catch((error) => {
       setHasVideoEnded(true);
@@ -154,6 +180,8 @@ const ExperienceScreen = ({
     setHasEnteredExperience(true);
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
+    setIsSceneVisible(false);
+    setShowPoster(Boolean(activeScene?.posterUrl));
     setIsVideoLoading((prev) => {
       if (!videoElement) return prev;
       return videoElement.readyState < 2;
@@ -222,13 +250,13 @@ const ExperienceScreen = ({
       <div className="immersive-stage">
         {videoSrc ? (
           <video
-            key={videoSrc}
             ref={videoRef}
-            className="immersive-video"
+            className={`immersive-video ${isSceneVisible ? "visible" : "pending"}`}
             src={videoSrc}
-            poster={posterSrc || undefined}
+            poster={showPoster ? posterSrc || undefined : undefined}
             autoPlay
             playsInline
+            preload="auto"
             controls={false}
             onEnded={handleVideoEnd}
             onPlay={handleVideoPlay}

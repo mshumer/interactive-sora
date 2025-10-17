@@ -30,9 +30,10 @@ const App = () => {
   const [pendingChoice, setPendingChoice] = useState(null);
   const [prefetchedScenes, setPrefetchedScenes] = useState({});
   const prefetchedAssetUrls = useRef(new Set());
+  const prefetchedVideos = useRef(new Map());
   const inFlightPrefetch = useRef(new Set());
 
-  const prefetchSceneAssets = useCallback((scene) => {
+  const prefetchSceneAssets = useCallback((scene, cacheKey) => {
     if (!scene || typeof window === "undefined") return;
 
     const record = prefetchedAssetUrls.current;
@@ -59,6 +60,17 @@ const App = () => {
 
     primeVideo(scene.videoUrl);
     primeImage(scene.posterUrl);
+
+    if (cacheKey && scene.videoUrl && !prefetchedVideos.current.has(cacheKey)) {
+      const video = document.createElement("video");
+      video.preload = "auto";
+      video.crossOrigin = "anonymous";
+      video.playsInline = true;
+      video.muted = true;
+      video.src = buildAssetUrl(scene.videoUrl);
+      video.load();
+      prefetchedVideos.current.set(cacheKey, video);
+    }
   }, []);
 
   useEffect(() => {
@@ -165,13 +177,12 @@ const App = () => {
             delete next[childPath];
             return next;
           });
-          prefetchSceneAssets(cached);
           return;
         }
         try {
           const nextScene = await fetchScene(childPath);
           if (nextScene?.status === "ready") {
-            prefetchSceneAssets(nextScene);
+            prefetchSceneAssets(nextScene, childPath);
             setPrefetchedScenes((prev) => {
               const next = { ...prev };
               delete next[childPath];
@@ -257,7 +268,7 @@ const App = () => {
             if (prev[childPath]) return prev;
             return { ...prev, [childPath]: scene };
           });
-          prefetchSceneAssets(scene);
+          prefetchSceneAssets(scene, childPath);
         })
         .catch(() => {
           // Swallow prefetch errors; user interaction will retry.
@@ -302,6 +313,7 @@ const App = () => {
       activePath,
       apiKey,
       isPolling,
+      prefetchedVideos,
     }),
     [worldInfo, story, activePath, apiKey, isPolling]
   );
@@ -317,6 +329,7 @@ const App = () => {
         try {
           prefetchedAssetUrls.current.clear();
           inFlightPrefetch.current.clear();
+          prefetchedVideos.current.clear();
           setPrefetchedScenes({});
           const rootScene = await fetchScene("");
           setStory([rootScene]);
