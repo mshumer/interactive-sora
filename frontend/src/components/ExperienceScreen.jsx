@@ -346,9 +346,6 @@ const ExperienceScreen = ({
 
         <div className={`choice-drawer ${shouldShowChoiceDrawer ? "visible" : ""}`}>
           <div className="drawer-inner">
-            <div className="drawer-header">
-              <span className="status awaiting">Choose the next branch</span>
-            </div>
             <div className="choice-grid">
               {choices.length ? (
                 choices.map((choice, index) => {
