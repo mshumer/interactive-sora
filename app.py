@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from urllib.parse import urlparse
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -794,7 +795,12 @@ def download_asset(stored_value: str, variant: str) -> Optional[Path]:
         if response.status_code >= 400:
             logger.warning("[continuity] download failed status=%s body=%s", response.status_code, response.text[:200])
             return None
-        suffix = Path(resolved_url).suffix or ".jpg"
+        parsed = urlparse(resolved_url)
+        path_suffix = Path(parsed.path).suffix.lower()
+        if path_suffix in {".jpg", ".jpeg", ".png", ".webp", ".mp4"}:
+            suffix = path_suffix
+        else:
+            suffix = ".mp4" if variant == "video" else ".jpg"
         fd, tmp_path = tempfile.mkstemp(suffix=suffix)
         os.close(fd)
         tmp = Path(tmp_path)
