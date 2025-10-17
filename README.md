@@ -6,7 +6,7 @@
 
 **One canonical choose-your-own adventure world, expanded by the community.**
 
-The app now persists every scene, prompt, and video to a shared datastore. When a player picks a branch that already exists, the cached clip plays instantly; if the branch is unexplored, they can contribute their own OpenAI API key to mint it for everyone else. No more duplicate generations or one-off sessions.
+The shared canon is now a portal-hopping multiverse: the Courier chases chronoglyph shards through remixed takes on famous game worlds (neon Vice City vibes, rune-soaked gothic battlefields, clockwork fantasy cities) to seal the Cataclysm Rift. Every 8-second beat delivers a high-energy action moment and sets up the next choice. When a branch already exists its video plays instantly; if not, explorers can contribute their own OpenAI API key to mint the clip for everyone else.
 
 ---
 
@@ -37,7 +37,7 @@ The world boots with a placeholder base prompt. First-time explorers will be ask
 | Variable | Default | Description |
 | --- | --- | --- |
 | `WORLD_ID` | `default` | Namespace for this shared world. |
-| `WORLD_BASE_PROMPT` | placeholder text | Cinematic seed prompt used for the very first scene. |
+| `WORLD_BASE_PROMPT` | multiverse chase narrative | Cinematic seed prompt used for the very first scene. Override to reskin the world. |
 | `PLANNER_MODEL` | `gpt-5` | Planner model passed to the Responses API. |
 | `SORA_MODEL` | `sora-2` | Model name forwarded to the Sora `/videos` endpoint. |
 | `VIDEO_SIZE` | `1280x720` | Render resolution for all clips. |
@@ -47,6 +47,8 @@ The world boots with a placeholder base prompt. First-time explorers will be ask
 | `SCENE_TIMEOUT_SECONDS` | `900` | Cancel and recycle claims that sit in `queued` longer than 15 minutes. |
 | `WATCHDOG_INTERVAL_SECONDS` | `60` | How often the timeout watchdog scans for stale jobs. |
 | `CONTRIBUTOR_SALT` | `sora-shared-world` | Salt used when hashing contributor metadata. |
+| `WORLD_PROMPT_GUIDANCE` | — | Optional extra flavor/examples injected into every planner call. |
+| `STATE_SUMMARY_MODEL` | `gpt-5-mini` | Model used to summarise each scene’s evolving world state (set to blank to disable). |
 
 For local hacking you can skip the R2 vars—videos will be copied into `storage/` automatically.
 
@@ -82,6 +84,8 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 - Keys persist in `localStorage` under `sora_shared_world_api_key`.
 - Storyboard/timeline reflects the canonical branch status in real time.
 - Active generations surface live progress so explorers can see how close a branch is to finishing.
+- Behind the scenes, each scene stores a state summary (generated with `gpt-5-mini`) so future branches carry forward the evolving world context.
+- Planner prompts now emphasise a full 8-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
 
 ---
 
@@ -95,4 +99,3 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 ---
 
 Build shared, cinematic adventures—once a branch exists, the whole world inherits it.
-

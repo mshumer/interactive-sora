@@ -55,16 +55,39 @@ SORA_VIDEOS_ENDPOINT = f"{OPENAI_API_BASE}/videos"
 RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
 
 WORLD_ID = os.environ.get("WORLD_ID", "default")
-BASE_PROMPT = os.environ.get(
-    "WORLD_BASE_PROMPT",
-    "A placeholder cinematic adventure world ready to be discovered.",
+
+DEFAULT_WORLD_BASE_PROMPT = (
+    "A multiverse adventure where shimmering portals splice iconic game-inspired realms together. "
+    "Our protagonist is the Courier, an agile dimension runner collecting chronoglyph shards that stabilize reality. "
+    "Each portal deposits the Courier into a distinct world—neon Vice City highways, rune-lit gothic battlegrounds, clockwork fantasy metropolises—"
+    "all remixing familiar vibes without naming trademarks. The Courier is guided by an AI companion, Luma, who tracks shard resonance."
+    " The stakes: close the Cataclysm Rift by assembling three legendary relics hidden across worlds;"
+    " each scene should propel the chase, reveal cross-world cause-and-effect, or introduce allies/enemies reacting to the Courier's interference."
 )
+
+BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
 PLANNER_MODEL = os.environ.get("PLANNER_MODEL", "gpt-5")
 SORA_MODEL = os.environ.get("SORA_MODEL", "sora-2")
 VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1280x720")
 SCENE_TIMEOUT_SECONDS = int(os.environ.get("SCENE_TIMEOUT_SECONDS", "900"))
 WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"))
 CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "sora-shared-world")
+
+DEFAULT_PROMPT_GUIDANCE = (
+    "\n".join(
+        [
+            "Tone: Cinematic, high-energy multiverse heist. Every shot should highlight a recognizable-but-remixed world feature (vehicles, creatures, tech).",
+            "Portals: Visualise swirling anomalies linking worlds. If a portal appears, show its activation, traversal, or aftermath in the same shot.",
+            "Momentum: Show large movements—dashing, driving, grappling, spell bursts—rather than static observation.",
+            "Quest Focus: We are chasing chronoglyph shards and the Cataclysm Rift. Each scene should reveal progress, a clue, or a complication tied to that quest.",
+            "Allies & Foes: Introduce colorful companions or antagonists from different worlds reacting to portals; show how their abilities influence the beat.",
+            "Hook: End with a striking twist (new world glimpsed, portal destabilising, relic reacting) that makes the next choice consequential.",
+        ]
+    )
+)
+
+PROMPT_GUIDANCE = os.environ.get("WORLD_PROMPT_GUIDANCE", "").strip() or DEFAULT_PROMPT_GUIDANCE
+STATE_SUMMARY_MODEL = os.environ.get("STATE_SUMMARY_MODEL", "gpt-5-mini").strip()
 
 VIDEO_DIR = Path("sora_cyoa_videos")
 FRAME_DIR = Path("sora_cyoa_frames")
@@ -111,6 +134,7 @@ class SceneResponse(BaseModel):
     updated_at: Optional[datetime] = Field(None, alias="updatedAt")
     progress: Optional[int] = None
     progress_updated_at: Optional[datetime] = Field(None, alias="progressUpdatedAt")
+    state_summary: Optional[str] = Field(None, alias="stateSummary")
 
 
 class SceneGenerationRequest(BaseModel):
@@ -352,6 +376,23 @@ def _update_scene_progress(world_id: str, path: str, progress: Optional[int]) ->
         scene.progress_updated_at = utcnow()
 
 
+def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) -> None:
+    prompt = scene.get("sora_prompt") or ""
+    if "Action Beat:" in prompt:
+        return
+    candidate = fallback_choice or ""
+    if not candidate:
+        choices = scene.get("choices") or []
+        if choices:
+            candidate = choices[0]
+        else:
+            candidate = (scene.get("scenario_display") or "")[:160]
+    candidate = candidate.strip()
+    if not candidate:
+        candidate = "Trigger a dramatic cross-world portal event within 8 seconds."
+    scene["sora_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
+
+
 def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
     choices = scene.choices or []
     child_statuses: List[str] = []
@@ -388,6 +429,7 @@ def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
         updatedAt=scene.updated_at,
         progress=getattr(scene, "progress", None),
         progressUpdatedAt=getattr(scene, "progress_updated_at", None),
+        stateSummary=getattr(scene, "state_summary", None),
     )
 
 
@@ -455,6 +497,8 @@ def _generate_scene_inner(
         _mark_pending(world_id, path)
         return
 
+    ensure_action_beat(planner_result, planner_result.get("_chosen_choice"))
+
     try:
         asset = render_scene_video(world_id, path, planner_result["sora_prompt"], api_key, cancel_event)
     except SceneCancelled:
@@ -467,6 +511,17 @@ def _generate_scene_inner(
     if cancel_event.is_set():
         _mark_pending(world_id, path)
         return
+
+    prior_state_summaries = collect_state_summaries(world_id, path)
+    state_summary_text = summarise_scene_state(
+        api_key=api_key,
+        base_prompt=BASE_PROMPT,
+        scenario_display=planner_result["scenario_display"],
+        choices=planner_result["choices"],
+        prior_summaries=prior_state_summaries,
+    )
+    if not state_summary_text:
+        state_summary_text = planner_result["scenario_display"]
 
     with session_scope() as session:
         scene = (
@@ -489,6 +544,7 @@ def _generate_scene_inner(
         scene.failure_detail = None
         scene.contributor_hash = contributor_hash
         scene.started_at = None
+        scene.state_summary = state_summary_text
         scene.progress = 100
         scene.progress_updated_at = utcnow()
         scene.trigger_choice = determine_trigger_choice(session, world_id, path)
@@ -524,6 +580,9 @@ def determine_trigger_choice(session: Session, world_id: str, path: str) -> Opti
 def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
     if not path:
         result = plan_initial_scene(api_key=api_key, base_prompt=BASE_PROMPT, model=PLANNER_MODEL)
+        first_choice = (result.get("choices") or [None])[0]
+        result["_chosen_choice"] = first_choice
+        result["_state_context"] = []
     else:
         parent_path_value = parent_path(path)
         if parent_path_value is None:
@@ -537,10 +596,13 @@ def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
         if parent is None or not parent.choices:
             raise RuntimeError("Parent scene lacks choices; cannot continue")
         prior_prompts = []
+        state_context: List[str] = []
         for anc_path in ancestor_paths:
             scene = by_path.get(anc_path)
             if scene and scene.sora_prompt:
                 prior_prompts.append(scene.sora_prompt)
+            if anc_path != path and scene and getattr(scene, "state_summary", None):
+                state_context.append(scene.state_summary)
         idx = last_choice_index(path)
         if idx is None or idx >= len(parent.choices):
             raise RuntimeError("Invalid choice index for path")
@@ -550,8 +612,11 @@ def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
             base_prompt=BASE_PROMPT,
             prior_sora_prompts=prior_prompts,
             chosen_choice=chosen_choice,
+            state_summaries=state_context,
             model=PLANNER_MODEL,
         )
+        result["_chosen_choice"] = chosen_choice
+        result["_state_context"] = state_context
     return result
 
 
@@ -571,6 +636,78 @@ def ancestor_path_list(path: str) -> List[str]:
     else:
         ancestors.append("")
     return ancestors
+
+
+def collect_state_summaries(world_id: str, path: str) -> List[str]:
+    ancestor_paths = ancestor_path_list(path)
+    # Exclude the current path; we only need previously locked scenes
+    ancestor_context = [p for p in ancestor_paths if p != path]
+    if not ancestor_context:
+        return []
+    with session_scope() as session:
+        rows = (
+            session.execute(
+                select(Scene).where(Scene.world_id == world_id, Scene.path.in_(ancestor_context))
+            )
+            .scalars()
+            .all()
+        )
+    rows.sort(key=lambda scene: scene.depth)
+    summaries = [row.state_summary for row in rows if getattr(row, "state_summary", None)]
+    return summaries
+
+
+STATE_SUMMARY_SYSTEM = """
+You are the chronicler for an expansive multiverse adventure.
+
+Summarise the current state in at most three short bullet points.
+- Track key elements: chronoglyph shards remaining/found, portal stability, allies or foes involved, immediate threats, and location shifts between worlds.
+- Highlight cause and effect (e.g., how actions in one world impact another).
+- Keep bullets under 160 characters, starting each with "- ". No extra commentary.
+""".strip()
+
+
+def summarise_scene_state(
+    api_key: str,
+    base_prompt: str,
+    scenario_display: str,
+    choices: List[str],
+    prior_summaries: List[str],
+) -> Optional[str]:
+    model = STATE_SUMMARY_MODEL or ""
+    if not model or model.lower() == "none":
+        return None
+
+    prior_section = "\n".join(f"- {summary}" for summary in prior_summaries) if prior_summaries else "(none yet)"
+    choices_section = "\n".join(f"- {choice}" for choice in choices)
+    user_input = f"""
+WORLD BASE PROMPT (trimmed):
+{base_prompt[:800]}
+
+PRIOR STATE SNAPSHOT:
+{prior_section}
+
+CURRENT SCENE NARRATION:
+{scenario_display}
+
+CHOICES OFFERED NEXT:
+{choices_section}
+
+TASK: Summarise the evolving state using at most three bullets as instructed.
+""".strip()
+
+    try:
+        summary_text = responses_create(
+            api_key=api_key,
+            model=model,
+            instructions=STATE_SUMMARY_SYSTEM,
+            user_input=user_input,
+        )
+        cleaned = summary_text.strip()
+        return cleaned if cleaned else None
+    except Exception as exc:  # pragma: no cover - best effort
+        logger.warning("state summary generation failed: %s", exc)
+        return None
 
 
 def render_scene_video(
@@ -753,8 +890,19 @@ Rules:
    - Provide exactly three distinct options for what the player can do next.
    - Make each option feasible in the next short shot, and clearly different in intent.
    - Keep each choice concise (<= 22 words).
+   - Aim for options that open visibly different paths (new discoveries, escalations, or dramatic reactions); avoid three small variations of the same move.
 
-5) Output strictly JSON. No markdown, no commentary, no code fences.
+5) Multiverse context:
+   - Portals can appear, destabilise, or be traversed in any scene. Highlight iconic world mashups (futuristic vehicles vs. dark fantasy adversaries, etc.) without naming trademarks.
+   - Tie choices to the chronoglyph shard hunt and the Cataclysm Rift stakes—progress, setbacks, or intel should be obvious on-screen.
+   - Allies/enemies from other worlds should react believably to cross-world physics or tech clashes.
+
+6) Pacing & shot design:
+   - Each 8-second shot must deliver a complete beat (setup → escalation → visible outcome) that meaningfully changes the situation.
+   - Start in motion—skip drawn-out establishing frames. Hit the key moment within the first 3 seconds and carry energy through the remainder.
+   - End with a fresh reveal, reaction, or consequence that sets up the next decision.
+
+7) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
 
 
@@ -925,6 +1073,10 @@ def normalize_scene_payload(scene: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def plan_initial_scene(api_key: str, base_prompt: str, model: str) -> dict:
+    guidance_section = ""
+    if PROMPT_GUIDANCE:
+        guidance_section = f"\n\nADDITIONAL WORLD GUIDANCE:\n{PROMPT_GUIDANCE}"
+
     user_input = f"""
 TASK: Create the opening scene with three choices.
 
@@ -933,6 +1085,7 @@ BASE PROMPT:
 
 Shot length: 8 seconds.
 Return JSON with keys: scenario_display, sora_prompt, choices (3).
+{guidance_section}
 """.strip()
     raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
     scene = normalize_scene_payload(extract_first_json(raw))
@@ -947,9 +1100,17 @@ def plan_next_scene(
     base_prompt: str,
     prior_sora_prompts: List[str],
     chosen_choice: str,
+    state_summaries: List[str],
     model: str,
 ) -> dict:
-    prior_joined = "\n\n---\n\n".join(prior_sora_prompts)
+    prior_joined = "\n\n---\n\n".join(prior_sora_prompts) if prior_sora_prompts else "(first continuation)"
+    state_section = (
+        "\n".join(f"- {summary}" for summary in state_summaries)
+        if state_summaries
+        else "- No prior state summary available yet."
+    )
+    guidance_section = f"\n\nADDITIONAL WORLD GUIDANCE:\n{PROMPT_GUIDANCE}" if PROMPT_GUIDANCE else ""
+
     user_input = f"""
 TASK: Create the next scene with three choices, continuing the story.
 
@@ -959,6 +1120,9 @@ BASE PROMPT:
 PRIOR SORA PROMPTS (in order; each was used to generate an 8s video):
 {prior_joined}
 
+CURRENT STATE SNAPSHOT (bullet list):
+{state_section}
+
 PLAYER'S CHOSEN ACTION TO CONTINUE:
 {chosen_choice}
 
@@ -966,6 +1130,7 @@ Note: The next 8-second shot MUST begin exactly from the final frame of the prev
 preserving continuity (subjects, camera position, lighting, motion direction), unless the chosen action implies a change.
 
 Return JSON with keys: scenario_display, sora_prompt, choices (3).
+{guidance_section}
 """.strip()
     raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
     scene = normalize_scene_payload(extract_first_json(raw))

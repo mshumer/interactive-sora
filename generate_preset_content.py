@@ -153,6 +153,7 @@ def build_tree(
             base_prompt=base_prompt,
             prior_sora_prompts=prior_prompts,
             chosen_choice=trigger_choice or "",
+            state_summaries=[],
             model=planner_model,
         )
 
