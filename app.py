@@ -737,7 +737,8 @@ def render_scene_video(
         if parent_scene and parent_scene.poster_url:
             logger.info("[continuity] fetching last frame for world=%s parent_path=%s url=%s", world_id, parent or "root", parent_scene.poster_url)
             parent_last_frame = download_asset(parent_scene.poster_url, variant="poster")
-            if parent_last_frame and parent_last_frame.exists():
+            logger.info("[continuity] download path=%s type=%s exists=%s", parent_last_frame, type(parent_last_frame), parent_last_frame.exists() if isinstance(parent_last_frame, Path) else None)
+            if isinstance(parent_last_frame, Path) and parent_last_frame.exists():
                 logger.info("[continuity] last frame ready at %s", parent_last_frame)
             else:
                 logger.warning("[continuity] failed to obtain last frame for world=%s path=%s", world_id, path or "root")

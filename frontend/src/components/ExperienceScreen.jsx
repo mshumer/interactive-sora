@@ -19,7 +19,7 @@ const ExperienceScreen = ({
   const [hasVideoEnded, setHasVideoEnded] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [hasEnteredExperience, setHasEnteredExperience] = useState(false);
   const [choicesRevealActive, setChoicesRevealActive] = useState(false);
   const videoRef = useRef(null);
   const lastSceneIdRef = useRef(null);
@@ -38,9 +38,12 @@ const ExperienceScreen = ({
     if (!activeScene) return;
 
     const hasVideo = Boolean(activeScene.videoUrl);
+    const sceneIdentity = activeScene.path || activeScene.videoUrl || "__scene__";
+    const isNewScene = lastSceneIdRef.current !== sceneIdentity;
+    lastSceneIdRef.current = sceneIdentity;
+
     setIsVideoLoading(hasVideo);
     setHasVideoEnded(!hasVideo);
-    setAutoplayBlocked(false);
     setChoicesRevealActive(!hasVideo);
 
     if (!hasVideo) return;
@@ -48,12 +51,12 @@ const ExperienceScreen = ({
     const videoElement = videoRef.current;
     if (!videoElement) return;
 
-    const sceneIdentity = activeScene.path || activeScene.videoUrl;
-    const isNewScene = lastSceneIdRef.current !== sceneIdentity;
-    lastSceneIdRef.current = sceneIdentity;
-
     if (isNewScene) {
       videoElement.currentTime = 0;
+    }
+
+    if (!hasEnteredExperience) {
+      return;
     }
 
     let cancelled = false;
@@ -63,11 +66,7 @@ const ExperienceScreen = ({
         await videoElement.play();
       } catch (error) {
         if (cancelled) return;
-        if (error?.name === "NotAllowedError") {
-          setAutoplayBlocked(true);
-          return;
-        }
-        // Leave the scene ready for a manual play without marking it as ended.
+        // Leave the scene ready for manual playback if something unexpected happens.
       }
     };
 
@@ -76,7 +75,7 @@ const ExperienceScreen = ({
     return () => {
       cancelled = true;
     };
-  }, [activeScene]);
+  }, [activeScene, hasEnteredExperience]);
 
   const videoSrc = useMemo(() => {
     if (!activeScene?.videoUrl) return null;
@@ -99,7 +98,6 @@ const ExperienceScreen = ({
 
   const handleChoice = (index) => {
     if (!canChoose) return;
-    setAutoplayBlocked(false);
     onMakeChoice(index);
   };
 
@@ -110,20 +108,14 @@ const ExperienceScreen = ({
 
   const handleVideoPlay = () => {
     setHasVideoEnded(false);
-    setAutoplayBlocked(false);
   };
 
   const handleReplay = () => {
     if (!videoRef.current) return;
-    setAutoplayBlocked(false);
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
     videoRef.current.currentTime = 0;
     videoRef.current.play().catch((error) => {
-      if (error?.name === "NotAllowedError") {
-        setAutoplayBlocked(true);
-        return;
-      }
       setHasVideoEnded(true);
     });
   };
@@ -139,23 +131,37 @@ const ExperienceScreen = ({
   };
 
   const handleTimelineSelect = (index) => {
-    setAutoplayBlocked(false);
     setActiveIndex(index);
   };
 
-  const handleResumePlayback = () => {
+  const handleExperienceStart = () => {
     const videoElement = videoRef.current;
-    if (!videoElement) return;
-    setAutoplayBlocked(false);
+    const attemptPlayback = () => {
+      if (!videoRef.current) return;
+      const playPromise = videoRef.current.play();
+      if (playPromise?.catch) {
+        playPromise.catch(() => {
+          setHasEnteredExperience(false);
+        });
+      }
+    };
+
+    setHasEnteredExperience(true);
+    setHasVideoEnded(false);
     setChoicesRevealActive(false);
-    const playPromise = videoElement.play();
-    if (playPromise?.catch) {
-      playPromise.catch((error) => {
-        if (error?.name === "NotAllowedError") {
-          setAutoplayBlocked(true);
-        }
-      });
+    if (!videoElement) return;
+    videoElement.currentTime = 0;
+    if (videoElement.readyState >= 2) {
+      attemptPlayback();
+      return;
     }
+
+    const handleCanPlay = () => {
+      videoElement.removeEventListener("canplay", handleCanPlay);
+      attemptPlayback();
+    };
+
+    videoElement.addEventListener("canplay", handleCanPlay);
   };
 
   const handleTimeUpdate = () => {
@@ -172,7 +178,12 @@ const ExperienceScreen = ({
 
   const showLoader = isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading);
   const allowReplay = Boolean(videoSrc && hasVideoEnded);
-  const shouldShowChoiceDrawer = choicesRevealActive;
+  const shouldShowChoiceDrawer = hasEnteredExperience && choicesRevealActive;
+  const worldTitle = worldInfo?.title || worldInfo?.name || "Choose Your Odyssey";
+  const worldDescription =
+    worldInfo?.tagline ||
+    worldInfo?.description ||
+    "Step into a cinematic universe that rewrites itself each time you make a choice.";
 
   if (!activeScene) {
     return (
@@ -244,7 +255,9 @@ const ExperienceScreen = ({
             type="button"
             className="control-button"
             onClick={() => {
-              setAutoplayBlocked(false);
+              setHasEnteredExperience(false);
+              setChoicesRevealActive(false);
+              setHasVideoEnded(false);
               onRestart();
             }}
           >
@@ -258,11 +271,23 @@ const ExperienceScreen = ({
           </button>
         )}
 
-        {autoplayBlocked && videoSrc && (
-          <div className="autoplay-overlay">
-            <button type="button" className="autoplay-button" onClick={handleResumePlayback}>
-              Tap to Play
-            </button>
+        {!hasEnteredExperience && (
+          <div className="start-screen">
+            <div className="start-screen__backdrop" />
+            <div className="start-screen__content">
+              <span className="start-screen__eyebrow">Shared World Prelude</span>
+              <h1 className="start-screen__headline">{worldTitle}</h1>
+              <p className="start-screen__body">{worldDescription}</p>
+              <div className="start-screen__chips">
+                <span className="start-chip">Dynamic Sora Scenes</span>
+                <span className="start-chip">Branching Story Paths</span>
+                <span className="start-chip">Your Decisions Matter</span>
+              </div>
+              <button type="button" className="start-screen__cta" onClick={handleExperienceStart}>
+                Begin Experience
+              </button>
+              <p className="start-screen__hint">Sound on · Best viewed fullscreen</p>
+            </div>
           </div>
         )}
 
