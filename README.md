@@ -44,6 +44,8 @@ The world boots with a placeholder base prompt. First-time explorers will be ask
 | `DATABASE_URL` | `sqlite:///./sora_world.db` | SQLAlchemy connection string. Supply your Railway/Supabase URL in production. |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | — | Cloudflare R2 credentials. If unset, assets fall back to local disk (`storage/`). |
 | `R2_PUBLIC_BASE_URL` | — | Optional CDN base (e.g. `https://media.example.com`). |
+| `R2_SIGNED_URLS` | `1` | Emit signed download URLs for R2 assets. Set to `0` to return raw public links. |
+| `R2_SIGNED_URL_TTL` | `3600` | Lifetime (seconds) for each signed asset URL. |
 | `SCENE_TIMEOUT_SECONDS` | `900` | Cancel and recycle claims that sit in `queued` longer than 15 minutes. |
 | `WATCHDOG_INTERVAL_SECONDS` | `60` | How often the timeout watchdog scans for stale jobs. |
 | `CONTRIBUTOR_SALT` | `sora-shared-world` | Salt used when hashing contributor metadata. |

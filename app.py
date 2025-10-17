@@ -344,24 +344,14 @@ def ensure_scene_exists(session: Session, world_id: str, path: str) -> Scene:
     return scene
 
 
-def _normalize_asset_url(url: Optional[str]) -> Optional[str]:
-    if not url:
-        return url
-    if isinstance(storage_client, LocalStorageClient):
-        base = storage_client.base_dir.resolve()
-        try:
-            path = Path(url)
-            if path.is_absolute():
-                resolved = path.resolve()
-                relative = resolved.relative_to(base)
-                rel_posix = relative.as_posix()
-                if resolved.suffix.lower() == ".mp4":
-                    return f"/storage/{rel_posix}"
-                if resolved.suffix.lower() in {".jpg", ".jpeg"}:
-                    return f"/storage/{rel_posix}"
-        except Exception:
-            pass
-    return url
+def _resolve_asset_url(value: Optional[str], *, variant: str) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        return storage_client.resolve_url(value, variant=variant)
+    except AttributeError:
+        # Back-compat for older StorageClient implementations
+        return value
 
 
 def _update_scene_progress(world_id: str, path: str, progress: Optional[int]) -> None:
@@ -424,8 +414,8 @@ def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
         choices=choices if isinstance(choices, list) else [],
         choicesStatus=child_statuses,
         childrenPaths=child_paths,
-        videoUrl=_normalize_asset_url(scene.video_url),
-        posterUrl=_normalize_asset_url(scene.poster_url),
+        videoUrl=_resolve_asset_url(scene.video_url, variant="video"),
+        posterUrl=_resolve_asset_url(scene.poster_url, variant="poster"),
         failureCode=scene.failure_code,
         failureDetail=scene.failure_detail,
         queuedSince=scene.started_at,
@@ -539,8 +529,12 @@ def _generate_scene_inner(
         scene.choices = planner_result["choices"]
         scene.planner_model = PLANNER_MODEL
         scene.planner_raw = planner_result.get("_raw_planner_output")
-        scene.video_url = asset.video_url
-        scene.poster_url = asset.poster_url
+        if isinstance(storage_client, LocalStorageClient):
+            scene.video_url = asset.video_url
+            scene.poster_url = asset.poster_url
+        else:
+            scene.video_url = asset.video_key
+            scene.poster_url = asset.poster_key
         scene.video_seconds = DEFAULT_SECONDS
         scene.status = SceneStatus.READY
         scene.failure_code = None
@@ -733,7 +727,7 @@ def render_scene_video(
                 .first()
             )
         if parent_scene and parent_scene.poster_url:
-            parent_last_frame = download_asset(parent_scene.poster_url)
+            parent_last_frame = download_asset(parent_scene.poster_url, variant="poster")
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -770,12 +764,15 @@ def render_scene_video(
             parent_last_frame.unlink(missing_ok=True)
 
 
-def download_asset(url: str) -> Optional[Path]:
+def download_asset(stored_value: str, variant: str) -> Optional[Path]:
+    resolved_url = _resolve_asset_url(stored_value, variant=variant)
+    if not resolved_url:
+        return None
     try:
-        response = requests.get(url, timeout=30)
+        response = requests.get(resolved_url, timeout=30)
         if response.status_code >= 400:
             return None
-        suffix = Path(url).suffix or ".jpg"
+        suffix = Path(resolved_url).suffix or ".jpg"
         fd, tmp_path = tempfile.mkstemp(suffix=suffix)
         os.close(fd)
         tmp = Path(tmp_path)
