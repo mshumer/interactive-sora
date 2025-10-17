@@ -83,6 +83,7 @@ const ExperienceScreen = ({
     }
 
     if (!hasEnteredExperience) {
+      videoElement.pause();
       return;
     }
 
@@ -144,6 +145,7 @@ const ExperienceScreen = ({
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
     setShowPoster(Boolean(activeScene?.posterUrl));
+    videoRef.current.pause();
     videoRef.current.currentTime = 0;
     videoRef.current.play().catch((error) => {
       setHasVideoEnded(true);
@@ -211,7 +213,8 @@ const ExperienceScreen = ({
     }
   };
 
-  const showLoader = isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading);
+  const showLoader =
+    hasEnteredExperience && (isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading));
   const allowReplay = Boolean(videoSrc && hasVideoEnded);
   const shouldShowChoiceDrawer = hasEnteredExperience && choicesRevealActive;
   const worldTitle = worldInfo?.title || worldInfo?.name || "Choose Your Odyssey";
@@ -252,7 +255,6 @@ const ExperienceScreen = ({
             className="immersive-video"
             src={videoSrc}
             poster={showPoster ? posterSrc || undefined : undefined}
-            autoPlay
             playsInline
             preload="auto"
             controls={false}
