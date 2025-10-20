@@ -37,6 +37,8 @@ from models import (
     parent_path,
     split_path,
 )
+from nyc_catalog import format_area_context, get_area, list_adjacent, load_catalog
+from nyc_state import normalize_state, seed_root_state, update_state
 from storage import LocalStorageClient, StoredAsset, build_storage_client
 
 try:
@@ -62,14 +64,10 @@ RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    "A multiverse adventure where shimmering portals splice iconic game-inspired realms together. "
-    "Our protagonist is the Courier, an agile dimension runner collecting chronoglyph shards that stabilize reality. "
-    "We begin inside the Nexus Gate, a concentric chamber housing three unlabelled portals:"
-    " one amber-glass gateway echoing with synth bass, one cerulean rune vortex crackling with arcane energy, and one obsidian aperture breathing neon steam."
-    " Each portal deposits the Courier into a distinct world—neon Vice City highways, rune-lit gothic battlegrounds, clockwork fantasy metropolises—"
-    "all remixing familiar vibes without naming trademarks. The Courier is guided by an AI companion, Luma, who tracks shard resonance."
-    " The stakes: close the Cataclysm Rift by assembling three legendary relics hidden across worlds;"
-    " each scene should propel the chase, reveal cross-world cause-and-effect, or introduce allies/enemies reacting to the Courier's interference."
+    "An apocalyptic, cyberpunk New York City—neon canyons, bioluminescent overgrowth, and rogue AI sentries remap every borough. "
+    "The street grid remains authentic: Times Square, Harlem, SoHo, the Financial District, the bridges, and the parks are all recognizable despite ruin. "
+    "Our masked courier must rekindle district beacons before militarized drones and mutated wildlife plunge the city into permanent blackout. "
+    "Every beat is fast, heart-pounding, and cinematic; traversal tech (hoverbikes, jetpacks, grapples, parkour) keeps momentum relentless while faces stay obscured."
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
@@ -83,13 +81,13 @@ CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "sora-shared-world")
 DEFAULT_PROMPT_GUIDANCE = (
     "\n".join(
         [
-            "Tone: Cinematic, high-energy multiverse heist. Every shot should highlight a recognizable-but-remixed world feature (vehicles, creatures, tech).",
-            "Portals: Visualise swirling anomalies linking worlds. If a portal appears, show its activation, traversal, or aftermath in the same shot.",
-            "Momentum: Show large movements—dashing, driving, grappling, spell bursts—rather than static observation.",
-            "Quest Focus: We are chasing chronoglyph shards and the Cataclysm Rift. Each scene should reveal progress, a clue, or a complication tied to that quest.",
-            "Allies & Foes: Introduce colorful companions or antagonists from different worlds reacting to portals; show how their abilities influence the beat.",
-            "Hook: End with a striking twist (new world glimpsed, portal destabilising, relic reacting) that makes the next choice consequential.",
-            "Portal Hub: When at the Nexus Gate, surface three distinct unlabeled portals as the primary choices; once a world is entered, momentum should push forward until the player restarts.",
+            "Speed: Every shot spans 1–3 Manhattan blocks; start in motion, escalate by second 3, never linger.",
+            "Faces: All figures keep faces obscured with hoods, masks, or deep shadow—no exceptions.",
+            "District Identity: Lean on catalog landmarks, textures, and ecosystems so each borough feels distinct and authentic.",
+            "Inventory: Highlight the item in use (hoverbike, jetpack, grappling hook, energy shield, AR visor) with visible action.",
+            "Ecosystem: Integrate local adversaries, hazards, and mutated creatures to amplify stakes.",
+            "Audio: Keep heart-pounding, continuous score matching the area’s motif; intensity stays 8–10.",
+            "Hook: Finish each 8-second beat with a twist or reveal that forces an urgent next choice.",
         ]
     )
 )
@@ -150,6 +148,7 @@ class SceneResponse(BaseModel):
     progress: Optional[int] = None
     progress_updated_at: Optional[datetime] = Field(None, alias="progressUpdatedAt")
     state_summary: Optional[str] = Field(None, alias="stateSummary")
+    state_json: Optional[dict] = Field(None, alias="stateJson")
 
 
 class SceneGenerationRequest(BaseModel):
@@ -239,6 +238,10 @@ def request_cancel(world_id: str, path: str) -> None:
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
+    try:
+        load_catalog()
+    except Exception as exc:
+        logger.warning("failed to load NYC catalog at startup: %s", exc)
     threading.Thread(target=_timeout_watchdog, daemon=True).start()
 
 
@@ -366,6 +369,8 @@ def ensure_scene_exists(session: Session, world_id: str, path: str) -> Scene:
     parent = parent_path(path)
     if parent is not None:
         scene.trigger_choice = None
+    else:
+        scene.state_json = seed_root_state()
     session.add(scene)
     session.flush()
     return scene
@@ -413,6 +418,25 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
         candidate = "Trigger a dramatic cross-world portal event within 8 seconds."
     scene["sora_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
     logger.info("[prompt] appended action beat: %s", candidate)
+
+
+def validate_sora_prompt_structure(prompt: str) -> Optional[str]:
+    required_tokens = [
+        "Context (not visible",
+        "Location:",
+        "Faces:",
+        "Movement:",
+        "Inventory:",
+        "Ecosystem:",
+        "Continuity:",
+        "Audio:",
+        "Prompt:",
+        "Action Beat:",
+    ]
+    missing = [token for token in required_tokens if token not in prompt]
+    if missing:
+        return f"missing required prompt lines: {', '.join(missing)}"
+    return None
 
 
 def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
@@ -468,6 +492,7 @@ def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
         progress=getattr(scene, "progress", None),
         progressUpdatedAt=getattr(scene, "progress_updated_at", None),
         stateSummary=getattr(scene, "state_summary", None),
+        stateJson=getattr(scene, "state_json", None),
     )
 
 
@@ -527,6 +552,10 @@ def _generate_scene_inner(
         return
 
     planner_result = plan_scene(world_id, path, api_key)
+    next_state = planner_result.get("_next_state")
+    if not isinstance(next_state, dict):
+        next_state = update_state(planner_result.get("_prior_state"), planner_result.get("state_update"))
+        planner_result["_next_state"] = next_state
     if planner_result.get("_planner_missing_prompt"):
         _mark_failed(world_id, path, "planner_missing_prompt", planner_result.get("_planner_missing_prompt_reason", ""))
         return
@@ -536,6 +565,47 @@ def _generate_scene_inner(
         return
 
     ensure_action_beat(planner_result, planner_result.get("_chosen_choice"))
+
+    structure_error = validate_sora_prompt_structure(planner_result["sora_prompt"])
+    if structure_error:
+        _mark_failed(world_id, path, "prompt_structure_error", structure_error)
+        return
+
+    location = next_state.get("location", {}) if isinstance(next_state, dict) else {}
+    movement_state = next_state.get("movement", {}) if isinstance(next_state, dict) else {}
+    inventory_state = next_state.get("inventory", {}) if isinstance(next_state, dict) else {}
+    audio_state = next_state.get("audio", {}) if isinstance(next_state, dict) else {}
+
+    required_mentions = {
+        "nearest_intersection": location.get("nearest_intersection"),
+        "heading": location.get("heading"),
+        "tech_in_use": movement_state.get("tech_in_use"),
+        "inventory": inventory_state.get("in_use"),
+        "audio_motif": audio_state.get("motif"),
+    }
+    missing_mentions = [
+        key
+        for key, value in required_mentions.items()
+        if isinstance(value, str) and value and value not in planner_result["sora_prompt"]
+    ]
+    blocks = location.get("blocks_moved")
+    if isinstance(blocks, int) and str(blocks) not in planner_result["sora_prompt"]:
+        missing_mentions.append("blocks_moved")
+    if (
+        'velocity "fast"' not in planner_result["sora_prompt"]
+        and "velocity 'fast'" not in planner_result["sora_prompt"]
+    ):
+        missing_mentions.append("velocity_fast")
+    if "obscured" not in planner_result["sora_prompt"].lower():
+        missing_mentions.append("faces_obscured")
+    if missing_mentions:
+        _mark_failed(
+            world_id,
+            path,
+            "prompt_state_mismatch",
+            f"Prompt missing state mentions for: {', '.join(missing_mentions)}",
+        )
+        return
 
     try:
         asset = render_scene_video(world_id, path, planner_result["sora_prompt"], api_key, cancel_event)
@@ -587,6 +657,7 @@ def _generate_scene_inner(
         scene.failure_detail = None
         scene.contributor_hash = contributor_hash
         scene.started_at = None
+        scene.state_json = planner_result.get("_next_state")
         scene.state_summary = state_summary_text
         scene.progress = 100
         scene.progress_updated_at = utcnow()
@@ -622,10 +693,39 @@ def determine_trigger_choice(session: Session, world_id: str, path: str) -> Opti
 
 def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
     if not path:
-        result = plan_initial_scene(api_key=api_key, base_prompt=BASE_PROMPT, model=PLANNER_MODEL)
+        prior_state = seed_root_state()
+        area = get_area(prior_state["location"].get("area_id"))
+        result = call_planner(
+            api_key=api_key,
+            model=PLANNER_MODEL,
+            base_prompt=BASE_PROMPT,
+            state=prior_state,
+            area=area,
+            prior_prompts=[],
+            prior_state_summaries=[],
+            player_choice=None,
+            stage_label="initial",
+        )
         first_choice = (result.get("choices") or [None])[0]
         result["_chosen_choice"] = first_choice
         result["_state_context"] = []
+        result["_prior_state"] = prior_state
+        next_state = update_state(prior_state, result.get("state_update"))
+        prev_area_id = prior_state["location"].get("area_id")
+        new_area_id = next_state["location"].get("area_id")
+        if prev_area_id and new_area_id and new_area_id != prev_area_id:
+            allowed = set(list_adjacent(prev_area_id))
+            if new_area_id not in allowed:
+                logger.warning(
+                    "[planner] invalid area hop %s -> %s; clamping to previous",
+                    prev_area_id,
+                    new_area_id,
+                )
+                next_state["location"].update(prior_state["location"])
+        result["_next_state"] = next_state
+        if not isinstance(result.get("state_update"), dict) or not result["state_update"]:
+            logger.warning("[planner] initial scene missing state_update; using prior defaults")
+            result["state_update"] = next_state
     else:
         parent_path_value = parent_path(path)
         if parent_path_value is None:
@@ -638,7 +738,7 @@ def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
         parent = by_path.get(parent_path_value)
         if parent is None or not parent.choices:
             raise RuntimeError("Parent scene lacks choices; cannot continue")
-        prior_prompts = []
+        prior_prompts: List[str] = []
         state_context: List[str] = []
         for anc_path in ancestor_paths:
             scene = by_path.get(anc_path)
@@ -651,16 +751,38 @@ def plan_scene(world_id: str, path: str, api_key: str) -> Dict[str, Any]:
             raise RuntimeError("Invalid choice index for path")
         chosen_choice = parent.choices[idx]
         logger.info("[planner] continue world=%s path=%s choice=%s state_context=%s", world_id, path, chosen_choice, state_context)
-        result = plan_next_scene(
+        prior_state = normalize_state(getattr(parent, "state_json", None))
+        area = get_area(prior_state["location"].get("area_id"))
+        result = call_planner(
             api_key=api_key,
-            base_prompt=BASE_PROMPT,
-            prior_sora_prompts=prior_prompts,
-            chosen_choice=chosen_choice,
-            state_summaries=state_context,
             model=PLANNER_MODEL,
+            base_prompt=BASE_PROMPT,
+            state=prior_state,
+            area=area,
+            prior_prompts=prior_prompts,
+            prior_state_summaries=state_context,
+            player_choice=chosen_choice,
+            stage_label="continuation",
         )
         result["_chosen_choice"] = chosen_choice
         result["_state_context"] = state_context
+        result["_prior_state"] = prior_state
+        next_state = update_state(prior_state, result.get("state_update"))
+        prev_area_id = prior_state["location"].get("area_id")
+        new_area_id = next_state["location"].get("area_id")
+        if prev_area_id and new_area_id and new_area_id != prev_area_id:
+            allowed = set(list_adjacent(prev_area_id))
+            if new_area_id not in allowed:
+                logger.warning(
+                    "[planner] invalid area hop %s -> %s; clamping to previous",
+                    prev_area_id,
+                    new_area_id,
+                )
+                next_state["location"].update(prior_state["location"])
+        result["_next_state"] = next_state
+        if not isinstance(result.get("state_update"), dict) or not result["state_update"]:
+            logger.warning("[planner] continuation missing state_update; using merged state")
+            result["state_update"] = next_state
     return result
 
 
@@ -702,11 +824,11 @@ def collect_state_summaries(world_id: str, path: str) -> List[str]:
 
 
 STATE_SUMMARY_SYSTEM = """
-You are the chronicler for an expansive multiverse adventure.
+You are the chronicler for the apocalyptic cyberpunk NYC run.
 
-Summarise the current state in at most three short bullet points.
-- Track key elements: chronoglyph shards remaining/found, portal stability, allies or foes involved, immediate threats, and location shifts between worlds.
-- Highlight cause and effect (e.g., how actions in one world impact another).
+Summarise the evolving situation in at most three short bullet points.
+- Track beacon status, district control, major threats (drones, mutants, hazards), and the gear/strategy currently in play.
+- Mention location shifts or adjacency (e.g., Times Square → Bryant Park) when relevant.
 - Keep bullets under 160 characters, starting each with "- ". No extra commentary.
 """.strip()
 
@@ -930,53 +1052,57 @@ def _child_path(path: str, index: int) -> str:
 # === Planner Helpers ===
 
 PLANNER_SYSTEM = """
-You are the Scenario Planner for a Sora-powered choose-your-own-adventure game.
+You are the Scenario Planner for a Sora-powered, street-accurate cyberpunk New York City experience.
 
-Your job:
-- Given a BASE PROMPT (world/tone) or a CONTINUATION (previous scene prompts + the player's chosen action),
-- Produce a JSON object that contains:
-  {
-    "scenario_display": "A short paragraph (<= 120 words) narrating the current scene to show in the UI.",
-    "sora_prompt": "<A detailed Sora prompt for generating an 8-second video.>",
-    "choices": ["<choice 1>", "<choice 2>", "<choice 3>"],
-    "choices_short": ["<concise choice 1>", "<concise choice 2>", "<concise choice 3>"]
-  }
+Workflow:
+1. Read the WORLD BASE PROMPT (tone & stakes).
+2. Examine the CURRENT STREET STATE JSON (location, movement, inventory, audio, policy).
+3. Study the CATALOG AREA CONTEXT bullets.
+4. Review PRIOR SORA PROMPTS (continuity) and, when provided, the PLAYER CHOICE.
+5. Produce JSON with keys: scenario_display, sora_prompt, choices, choices_short, state_update.
 
 Rules:
-1) The 'sora_prompt' must be the exact text we send to Sora's /videos API.
-   - Include a line: "Context (not visible in video, only for AI guidance): ..." to carry forward continuity and constraints.
-   - Include a line: "Prompt: ..." with concrete, cinematic directions (camera, subject, motion, lighting).
-   - Keep 'Prompt' specific to a single 8-second shot.
-   - For steps after the first, begin exactly from the final frame of the previous scene.
+- Shots are photorealistic, continuous 8-second scenes. They must begin already in motion, escalate by the 3-second mark, and close on a hook that pushes the next decision.
+- Movement must remain within 1–3 Manhattan blocks consistent with movement.tech_in_use and the stated heading. Only switch to an adjacent catalog area when the traversal budget allows it.
+- Faces of every figure stay obscured (hoods, masks, deep shadow). Content must remain PG-13 and free of copyrighted logos/characters.
+- Maintain geography: reference the real street elements from the area context and state (intersections, landmarks, street textures).
+- Audio stays heart-pounding and continuous; respect the area’s motif and keep intensity between 8 and 10.
+- Use the player’s inventory—showcase the item listed in state_update.inventory.in_use.
 
-2) Safety & platform constraints (strict):
-   - Content must be suitable for audiences under 18.
-   - Do NOT depict real people (including public figures) or copyrighted/fictional characters.
-   - Avoid copyrighted music and explicit logos/trademarks. Use generic brand cues only.
-   - Avoid hate, sexual content, excessive violence, or self-harm.
+Sora prompt structure (exact wording & order):
+Context (not visible in video, only for AI guidance):
+Location: <borough>, <district>/<neighborhood>, nearest <intersection>, heading <heading>, moved <blocks> blocks
+Faces: all faces obscured (hoods/masks/shadows) — mandatory
+Movement: <tech_in_use> at velocity "fast"; respect 1–3 block traversal budget
+Inventory: <item in use> (feature it visibly)
+Ecosystem: adversaries <...>; creatures <...>; hazards <...>
+Continuity: start from prior shot's final frame; keep time-of-day/weather consistent
+Audio: <audio motif>, continuous, heart-pounding, no copyrighted music
 
-3) Continuity:
-   - Maintain consistent characters, setting, tone, camera language, and lighting unless the choice implies a justified shift.
-   - Ensure smooth shot-to-shot transitions (same time of day, matching positions/poses as appropriate).
+Prompt: <Concrete 8-second cinematic beat with dynamic camera, vivid district visuals, kinetic action, and a twist>
 
-4) Choices:
-   - Provide exactly three distinct options for what the player can do next.
-   - Make each option feasible in the next short shot, and clearly different in intent.
-   - Keep each entry in `choices` descriptive yet punchy (<= 22 words) to guide planning and video prompts.
-   - Provide a matching `choices_short` array: same order, each entry <= 12 words, written as an imperative teaser the player reads in the UI.
-   - Aim for options that open visibly different paths (new discoveries, escalations, or dramatic reactions); avoid three small variations of the same move.
+Action Beat: <Imperative describing the climax that lands inside the 8-second window>
 
-5) Multiverse context:
-   - Portals can appear, destabilise, or be traversed in any scene. Highlight iconic world mashups (futuristic vehicles vs. dark fantasy adversaries, etc.) without naming trademarks.
-   - Tie choices to the chronoglyph shard hunt and the Cataclysm Rift stakes—progress, setbacks, or intel should be obvious on-screen.
-   - Allies/enemies from other worlds should react believably to cross-world physics or tech clashes.
+Choices:
+- Exactly three options (≤22 words each), clearly distinct in intent and traversal.
+- Each choice must reference local landmarks, threats, or gear.
+- choices_short mirrors the order, ≤12 words, punchy imperative.
 
-6) Pacing & shot design:
-   - Each 8-second shot must deliver a complete beat (setup → escalation → visible outcome) that meaningfully changes the situation.
-   - Start in motion—skip drawn-out establishing frames. Hit the key moment within the first 3 seconds and carry energy through the remainder.
-   - End with a fresh reveal, reaction, or consequence that sets up the next decision.
+State update:
+- Return `state_update` matching the schema (location, movement, inventory, ecosystem, audio, policy).
+- Update nearest_intersection, heading, and blocks_moved (clamp to 1–3). Change area_id only if reachable via adjacency and traversal budget.
+- Keep policy.faces_obscured true. Audio intensity stays within 8–10.
 
-7) Output strictly JSON. No markdown, no commentary, no code fences.
+Output strictly JSON:
+{
+  "scenario_display": "...",
+  "sora_prompt": "...",
+  "choices": ["...", "...", "..."],
+  "choices_short": ["...", "...", "..."],
+  "state_update": {...}
+}
+
+Do not wrap output in markdown or explain your reasoning.
 """.strip()
 
 
@@ -1070,6 +1196,13 @@ def normalize_scene_payload(scene: Dict[str, Any]) -> Dict[str, Any]:
         "conciseChoices",
         "short_choices",
         "shortChoices",
+    ]
+    state_update_keys = [
+        "state_update",
+        "stateUpdate",
+        "state_json",
+        "stateJson",
+        "state",
     ]
 
     scenario_display = _pick(scenario_display_keys)
@@ -1172,30 +1305,119 @@ def normalize_scene_payload(scene: Dict[str, Any]) -> Dict[str, Any]:
     normalized["choices_short"] = choices_short
     normalized["_planner_missing_prompt"] = sora_prompt_missing
     normalized["_planner_missing_prompt_reason"] = sora_prompt_missing_reason
+    state_update = _pick(state_update_keys)
+    if isinstance(state_update, dict):
+        normalized["state_update"] = state_update
+    else:
+        normalized["state_update"] = {}
     return normalized
 
 
-def plan_initial_scene(api_key: str, base_prompt: str, model: str) -> dict:
-    guidance_section = ""
-    if PROMPT_GUIDANCE:
-        guidance_section = f"\n\nADDITIONAL WORLD GUIDANCE:\n{PROMPT_GUIDANCE}"
+def _format_list(items: List[str], empty_placeholder: str) -> str:
+    if not items:
+        return empty_placeholder
+    return "\n".join(f"- {item}" for item in items)
 
-    user_input = f"""
-TASK: Create the opening scene with three choices.
 
-BASE PROMPT:
+def build_planner_user_input(
+    *,
+    base_prompt: str,
+    state: Dict[str, Any],
+    area: Optional[Dict[str, Any]],
+    prior_prompts: List[str],
+    prior_state_summaries: List[str],
+    player_choice: Optional[str],
+    stage_label: str,
+) -> str:
+    area_context = format_area_context(area)
+    state_json = json.dumps(state, indent=2, ensure_ascii=False)
+    prompts_section = (
+        "(none yet — opening beat)"
+        if not prior_prompts
+        else "\n---\n".join(prior_prompts[-3:])
+    )
+    summaries_section = _format_list(
+        prior_state_summaries[-5:], "- (no prior summaries recorded)"
+    )
+    choice_section = player_choice or "(root scene — no prior choice)"
+    guidance_section = PROMPT_GUIDANCE or "(none)"
+
+    return f"""
+STAGE: {stage_label}
+
+WORLD BASE PROMPT:
 {base_prompt}
 
-Shot length: 8 seconds.
-Return JSON with keys: scenario_display, sora_prompt, choices (3), choices_short (3).
+CURRENT STREET STATE (JSON):
+{state_json}
+
+CATALOG AREA CONTEXT:
+{area_context}
+
+PRIOR SORA PROMPTS (most recent last, max 3 shown):
+{prompts_section}
+
+PRIOR STATE SNAPSHOTS (human-readable, optional):
+{summaries_section}
+
+PLAYER CHOICE TRIGGERING THIS SCENE:
+{choice_section}
+
+ADDITIONAL WORLD GUIDANCE:
 {guidance_section}
+
+Return JSON with keys: scenario_display, sora_prompt, choices, choices_short, state_update.
 """.strip()
-    raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
+
+
+def call_planner(
+    *,
+    api_key: str,
+    model: str,
+    base_prompt: str,
+    state: Dict[str, Any],
+    area: Optional[Dict[str, Any]],
+    prior_prompts: List[str],
+    prior_state_summaries: List[str],
+    player_choice: Optional[str],
+    stage_label: str,
+) -> Dict[str, Any]:
+    user_input = build_planner_user_input(
+        base_prompt=base_prompt,
+        state=state,
+        area=area,
+        prior_prompts=prior_prompts,
+        prior_state_summaries=prior_state_summaries,
+        player_choice=player_choice,
+        stage_label=stage_label,
+    )
+    raw = responses_create(
+        api_key=api_key,
+        model=model,
+        instructions=PLANNER_SYSTEM,
+        user_input=user_input,
+    )
     scene = normalize_scene_payload(extract_first_json(raw))
     scene["_raw_planner_output"] = raw.strip()
     scene["_planner_model"] = model
-    scene["_planner_stage"] = "initial"
+    scene["_planner_stage"] = stage_label
     return scene
+
+
+def plan_initial_scene(api_key: str, base_prompt: str, model: str) -> dict:
+    seed = seed_root_state()
+    area = get_area(seed["location"].get("area_id"))
+    return call_planner(
+        api_key=api_key,
+        model=model,
+        base_prompt=base_prompt,
+        state=seed,
+        area=area,
+        prior_prompts=[],
+        prior_state_summaries=[],
+        player_choice=None,
+        stage_label="initial",
+    )
 
 
 def plan_next_scene(
@@ -1206,41 +1428,19 @@ def plan_next_scene(
     state_summaries: List[str],
     model: str,
 ) -> dict:
-    prior_joined = "\n\n---\n\n".join(prior_sora_prompts) if prior_sora_prompts else "(first continuation)"
-    state_section = (
-        "\n".join(f"- {summary}" for summary in state_summaries)
-        if state_summaries
-        else "- No prior state summary available yet."
+    seed = seed_root_state()
+    area = get_area(seed["location"].get("area_id"))
+    return call_planner(
+        api_key=api_key,
+        model=model,
+        base_prompt=base_prompt,
+        state=seed,
+        area=area,
+        prior_prompts=prior_sora_prompts,
+        prior_state_summaries=state_summaries,
+        player_choice=chosen_choice,
+        stage_label="legacy",
     )
-    guidance_section = f"\n\nADDITIONAL WORLD GUIDANCE:\n{PROMPT_GUIDANCE}" if PROMPT_GUIDANCE else ""
-
-    user_input = f"""
-TASK: Create the next scene with three choices, continuing the story.
-
-BASE PROMPT:
-{base_prompt}
-
-PRIOR SORA PROMPTS (in order; each was used to generate an 8s video):
-{prior_joined}
-
-CURRENT STATE SNAPSHOT (bullet list):
-{state_section}
-
-PLAYER'S CHOSEN ACTION TO CONTINUE:
-{chosen_choice}
-
-Note: The next 8-second shot MUST begin exactly from the final frame of the previous shot,
-preserving continuity (subjects, camera position, lighting, motion direction), unless the chosen action implies a change.
-
-Return JSON with keys: scenario_display, sora_prompt, choices (3), choices_short (3).
-{guidance_section}
-""".strip()
-    raw = responses_create(api_key=api_key, model=model, instructions=PLANNER_SYSTEM, user_input=user_input)
-    scene = normalize_scene_payload(extract_first_json(raw))
-    scene["_raw_planner_output"] = raw.strip()
-    scene["_planner_model"] = model
-    scene["_planner_stage"] = "continuation"
-    return scene
 
 
 # === Sora Helpers ===

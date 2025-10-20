@@ -6,7 +6,7 @@
 
 **One canonical choose-your-own adventure world, expanded by the community.**
 
-The shared canon is now a portal-hopping multiverse: the Courier chases chronoglyph shards through remixed takes on famous game worlds (neon Vice City vibes, rune-soaked gothic battlefields, clockwork fantasy cities) to seal the Cataclysm Rift. Every 8-second beat delivers a high-energy action moment and sets up the next choice. When a branch already exists its video plays instantly; if not, explorers can contribute their own OpenAI API key to mint the clip for everyone else.
+The canon now lives inside an apocalyptic, cyberpunk New York City. Times Square, Harlem, SoHo, the Financial District, the bridges, and the parks still map to the real street grid—but everything is neon-drenched, overgrown, and patrolled by rogue AI. Our masked courier tears across the boroughs on hoverbikes, jetpacks, grapples, and parkour gear to reignite district beacons before militarized drones and mutated wildlife shut the city down for good. Every 8-second beat is relentless: faces stay obscured, audio slams, and the street tracker keeps the geography honest. When a branch already exists its video plays instantly; otherwise explorers can drop in an OpenAI API key to mint the clip for everyone.
 
 ---
 
@@ -29,6 +29,8 @@ The world boots with a placeholder base prompt. First-time explorers will be ask
 - `frontend/` – React client with the immersive player UI.
 - `start.sh` – Convenience script that bootstraps everything.
 - `generate_preset_content.py` – Optional tool for pre-rendering demo trees per preset.
+- `data/nyc_catalog.json` – Frozen catalog describing each borough/district’s visuals, ecosystems, audio motifs, and traversal beats.
+- `nyc_catalog.py` / `nyc_state.py` – Helpers for catalog lookup and the location-aware street state tracker.
 
 ---
 
@@ -37,7 +39,7 @@ The world boots with a placeholder base prompt. First-time explorers will be ask
 | Variable | Default | Description |
 | --- | --- | --- |
 | `WORLD_ID` | `default` | Namespace for this shared world. |
-| `WORLD_BASE_PROMPT` | multiverse chase narrative | Cinematic seed prompt used for the very first scene. Override to reskin the world. |
+| `WORLD_BASE_PROMPT` | cyberpunk NYC chase narrative | Cinematic seed prompt for the apocalyptic NYC experience. Override to reskin the world. |
 | `PLANNER_MODEL` | `gpt-5` | Planner model passed to the Responses API. |
 | `SORA_MODEL` | `sora-2` | Model name forwarded to the Sora `/videos` endpoint. |
 | `VIDEO_SIZE` | `1280x720` | Render resolution for all clips. |
@@ -80,15 +82,14 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 
 ## Frontend Behaviour
 
-- Config screen removed—players jump straight into the world.
-- Choices with cached clips are highlighted, signalling instant playback.
-- Selecting an unexplored branch prompts for a key (with cancel option to pick another path).
+- Config screen removed—players drop straight into Times Square with instant playback if the clip exists.
+- Choices with cached clips are highlighted; unexplored branches prompt for a key (with cancel option).
 - Keys persist in `localStorage` under `sora_shared_world_api_key`.
-- Storyboard/timeline reflects the canonical branch status in real time.
-- Active generations surface live progress so explorers can see how close a branch is to finishing.
-- Behind the scenes, each scene stores a state summary (generated with `gpt-5-mini`) so future branches carry forward the evolving world context.
-- Planner prompts now emphasise a full 8-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
-- The Nexus Gate opening beat presents three mysterious portals; hit **Restart** anytime to return there and choose a different world with instant playback of already-generated branches.
+- Story timeline reflects canonical branch status + whether clips are pending, queued, or failed.
+- Live progress bubbles show generation percentage so explorers know when a branch will finish.
+- Every scene now exposes `stateJson` (location, movement, inventory, audio) for tools that want to render overlays or analytics.
+- Planner/Sora prompts enforce the NYC template: Context → Prompt → Action Beat, faces always obscured, 1–3 block traversal, heart‑pounding audio, and explicit gear usage.
+- Restart drops you back into the Times Square opener—previously minted branches replay instantly.
 
 ---
 

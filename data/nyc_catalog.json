@@ -1,0 +1,2925 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2025-10-20T12:00:00Z",
+  "areas": [
+    {
+      "id": "manhattan_midtown_times_square",
+      "name": "Times Square Surge",
+      "borough": "Manhattan",
+      "district": "Midtown West",
+      "neighborhood": "Times Square",
+      "primary_use": "commerce",
+      "adjacent": [
+        "manhattan_midtown_bryant_park",
+        "manhattan_midtown_garment_district",
+        "manhattan_midtown_hells_kitchen"
+      ],
+      "landmarks": [
+        "Broadway canyons",
+        "Dismantled digital billboards",
+        "42nd Street plazas"
+      ],
+      "visuals": {
+        "palette": [
+          "electric magenta",
+          "acid teal",
+          "strobing amber"
+        ],
+        "lighting": "Neon-saturated midnight with intermittent blackout flickers",
+        "architecture": [
+          "towering LED facades",
+          "collapsed marquees",
+          "reinforced skywalks"
+        ],
+        "set_dressing": [
+          "hologram shards",
+          "autonomous taxi husks",
+          "plasma advertisement ghosts"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "hijacked signage drones",
+          "riot-control mechs"
+        ],
+        "inhabitants": [
+          "cloaked data couriers"
+        ],
+        "hazards": [
+          "electrical surges",
+          "falling billboard panels"
+        ]
+      },
+      "creatures": [],
+      "audio_motif": "Stuttering synth bass with siren-tail glissandos and pounding percussion",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Thread hoverbike lanes between glitching ad pylons",
+          "Boost over collapsed pedestrian bridges onto Broadway terraces",
+          "Spiral around plasma-lit billboards to maintain momentum"
+        ]
+      },
+      "sora_tokens": [
+        "cyberpunk times square",
+        "neon canyon rush",
+        "billboard debris storm",
+        "masked rider silhouette"
+      ],
+      "street_essence": "A canyon of broken spectacle\u2014towering screens strobe propaganda as rain-slick asphalt reflects neon ruins; everything pulses with frantic energy.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_midtown_bryant_park",
+      "name": "Bryant Park Overgrowth",
+      "borough": "Manhattan",
+      "district": "Midtown West",
+      "neighborhood": "Bryant Park",
+      "primary_use": "civic",
+      "adjacent": [
+        "manhattan_midtown_times_square",
+        "manhattan_midtown_grand_central",
+        "manhattan_midtown_garment_district"
+      ],
+      "landmarks": [
+        "Overgrown lawn terraces",
+        "Armored library fa\u00e7ade"
+      ],
+      "visuals": {
+        "palette": [
+          "emerald",
+          "cool lunar white",
+          "sodium gold"
+        ],
+        "lighting": "Bioluminescent vines pulse under shadowy skyscraper canopies",
+        "architecture": [
+          "reinforced library steps",
+          "ivy-wrapped office towers"
+        ],
+        "set_dressing": [
+          "moss-draped benches",
+          "dormant ice rink drones"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "camouflaged sniper automatons"
+        ],
+        "inhabitants": [
+          "botanical hackers tending gene vats"
+        ],
+        "hazards": [
+          "spore bursts",
+          "root snare pits"
+        ]
+      },
+      "creatures": [
+        "photosynthetic sparrow-swarms"
+      ],
+      "audio_motif": "Layered string ostinatos over deep heartbeat drums and wind chimes",
+      "movement": {
+        "preferred_tech": [
+          "grappling_hook",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Grapple off the library cornice into vine tunnels",
+          "Jetpack skim above bioluminescent tree crowns",
+          "Vault across greenhouse rooftops before spores ignite"
+        ]
+      },
+      "sora_tokens": [
+        "bio-neon park",
+        "library bastion",
+        "moss canopy glide"
+      ],
+      "street_essence": "A verdant refuge turned lethal lab\u2014towering stacks loom over glowing foliage and silent caretakers.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_midtown_hells_kitchen",
+      "name": "Hell's Kitchen Heat Sink",
+      "borough": "Manhattan",
+      "district": "Hell's Kitchen",
+      "neighborhood": "Hell's Kitchen",
+      "primary_use": "industrial",
+      "adjacent": [
+        "manhattan_midtown_times_square",
+        "manhattan_midtown_garment_district",
+        "manhattan_chelsea_highline"
+      ],
+      "landmarks": [
+        "Steam-vent alleys",
+        "Armored food depots",
+        "Hudson turbine fields"
+      ],
+      "visuals": {
+        "palette": [
+          "molten orange",
+          "steel blue",
+          "infrared crimson"
+        ],
+        "lighting": "Low fog pierced by furnace glow and maintenance floodlights",
+        "architecture": [
+          "armored warehouses",
+          "retrofitted rowhouses"
+        ],
+        "set_dressing": [
+          "coolant mist",
+          "scrapped delivery bots"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "heat-shielded riot drones",
+          "black market cyborg enforcers"
+        ],
+        "inhabitants": [
+          "smugglers running coolant contraband"
+        ],
+        "hazards": [
+          "flash steam eruptions",
+          "magnetic track traps"
+        ]
+      },
+      "creatures": [
+        "rad-inflamed gutter hounds"
+      ],
+      "audio_motif": "Industrial percussion with side-chained bass throbs and welding sparks",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Slingshot hoverbike through steam-choked service roads",
+          "Wall-run along heat exchangers to dodge patrol drones",
+          "Power-slide under rising blast doors"
+        ]
+      },
+      "sora_tokens": [
+        "industrial inferno streets",
+        "steam jet evasions",
+        "masked rider heatwave"
+      ],
+      "street_essence": "Boiling vapor veils fortified warehouses while renegade crews race through furnace-lit canyons.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_midtown_garment_district",
+      "name": "Garment District Loomworks",
+      "borough": "Manhattan",
+      "district": "Garment District",
+      "neighborhood": "Garment District",
+      "primary_use": "manufacturing",
+      "adjacent": [
+        "manhattan_midtown_times_square",
+        "manhattan_midtown_bryant_park",
+        "manhattan_midtown_grand_central",
+        "manhattan_flatiron_nomad"
+      ],
+      "landmarks": [
+        "Automated textile towers",
+        "fiber spool plazas"
+      ],
+      "visuals": {
+        "palette": [
+          "iridescent violet",
+          "chrome silver",
+          "deep indigo"
+        ],
+        "lighting": "Rotating pattern projectors paint the night in shifting stitches",
+        "architecture": [
+          "cantilevered factories",
+          "loom-housing hybrids"
+        ],
+        "set_dressing": [
+          "spools of conductive thread",
+          "drone sewing swarms"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "stealth textile sentries",
+          "pattern-tracking hunter drones"
+        ],
+        "inhabitants": [
+          "design syndicate runners"
+        ],
+        "hazards": [
+          "snapping filament wires",
+          "fabric smother traps"
+        ]
+      },
+      "creatures": [
+        "chameleon cloak foxes"
+      ],
+      "audio_motif": "Glitch arpeggios woven with shuttle-clack rhythms and sub-bass pulses",
+      "movement": {
+        "preferred_tech": [
+          "grappling_hook",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Swing through suspended conveyor belts",
+          "Drift hoverbike along textile skyways",
+          "Dive between laser-cutting beams"
+        ]
+      },
+      "sora_tokens": [
+        "loom factory city",
+        "filament skyline",
+        "masked courier zigzag"
+      ],
+      "street_essence": "Nuon-lit looms span the avenues, weaving both armor and ambush while sentries patrol in silence.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_midtown_east",
+      "name": "Midtown East Resonance",
+      "borough": "Manhattan",
+      "district": "Midtown East",
+      "neighborhood": "Midtown East",
+      "primary_use": "corporate",
+      "adjacent": [
+        "manhattan_midtown_grand_central",
+        "manhattan_midtown_bryant_park",
+        "manhattan_upper_east_side",
+        "manhattan_central_park_south"
+      ],
+      "landmarks": [
+        "Shard-spliced office spires",
+        "skybridge atriums"
+      ],
+      "visuals": {
+        "palette": [
+          "azure",
+          "white neon",
+          "graphite"
+        ],
+        "lighting": "Cold corporate glow reflecting off mirrored glass shards",
+        "architecture": [
+          "fractured skyscrapers",
+          "levitating conference pods"
+        ],
+        "set_dressing": [
+          "floating holo-agendas",
+          "monorail mag-lines"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "executive security drones",
+          "quantum accountants in stealth suits"
+        ],
+        "inhabitants": [
+          "corporate deserters trading intel"
+        ],
+        "hazards": [
+          "shardfalls",
+          "gravitic lock corridors"
+        ]
+      },
+      "creatures": [],
+      "audio_motif": "Glacial pads with ticking glass percussion and high-tempo pulses",
+      "movement": {
+        "preferred_tech": [
+          "jetpack",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Rocket between skybridges just ahead of scanning arrays",
+          "Drift hoverbike along levitating boardroom loops",
+          "Kick off mirrored walls to redirect inertia"
+        ]
+      },
+      "sora_tokens": [
+        "fractured corporate skyline",
+        "floating boardroom debris",
+        "masked jetpack trail"
+      ],
+      "street_essence": "Corporate spires glimmer with broken authority; glass shards orbit like satellites while security algorithms hunt intruders.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_midtown_grand_central",
+      "name": "Grand Central Pulse",
+      "borough": "Manhattan",
+      "district": "Midtown East",
+      "neighborhood": "Grand Central",
+      "primary_use": "transport",
+      "adjacent": [
+        "manhattan_midtown_bryant_park",
+        "manhattan_midtown_east",
+        "manhattan_midtown_garment_district",
+        "manhattan_flatiron_nomad"
+      ],
+      "landmarks": [
+        "Grand Central concourse vaults",
+        "ion-lit departure platforms"
+      ],
+      "visuals": {
+        "palette": [
+          "turquoise",
+          "brass",
+          "plasma white"
+        ],
+        "lighting": "Pulsing station beacons and particle streams",
+        "architecture": [
+          "Beaux-Arts arches fused with maglev coils"
+        ],
+        "set_dressing": [
+          "time-rift clocks",
+          "hovering luggage swarms"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "schedule-enforcing auto-guards",
+          "timekeeping sentinels"
+        ],
+        "inhabitants": [
+          "refugee timetable brokers"
+        ],
+        "hazards": [
+          "temporal echoes",
+          "track power surges"
+        ]
+      },
+      "creatures": [
+        "phase-shifting pigeons"
+      ],
+      "audio_motif": "Clockwork chimes layered with drumline propulsion and subway rumble",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Race hoverbike along maglev rails before they energize",
+          "Dive jetpack through vaulted windows into the concourse",
+          "Skim along suspended train car shells"
+        ]
+      },
+      "sora_tokens": [
+        "grand central cyberpunk",
+        "clockwork maglev",
+        "masked courier sprint"
+      ],
+      "street_essence": "A resonant transit cathedral, thrumming with stolen time and flickering departures.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_flatiron_nomad",
+      "name": "Flatiron Singularity",
+      "borough": "Manhattan",
+      "district": "Flatiron",
+      "neighborhood": "Flatiron / NoMad",
+      "primary_use": "innovation",
+      "adjacent": [
+        "manhattan_midtown_garment_district",
+        "manhattan_midtown_grand_central",
+        "manhattan_midtown_east",
+        "manhattan_chelsea_highline",
+        "manhattan_soho"
+      ],
+      "landmarks": [
+        "tilted Flatiron shard",
+        "floating cowork lofts"
+      ],
+      "visuals": {
+        "palette": [
+          "amber",
+          "neon cyan",
+          "soft graphite"
+        ],
+        "lighting": "Holographic prototyping grids cut through the dusk",
+        "architecture": [
+          "spindle-shaped towers",
+          "adaptive street labs"
+        ],
+        "set_dressing": [
+          "hovering protoboards",
+          "kinetic sculpture arrays"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "prototype defense drones",
+          "patent hunters"
+        ],
+        "inhabitants": [
+          "startup enclaves guarding IP caches"
+        ],
+        "hazards": [
+          "code snare fields",
+          "memory wipe fog"
+        ]
+      },
+      "creatures": [
+        "nanite pigeons"
+      ],
+      "audio_motif": "Arpeggiated synth chords with glitch percussion and rumbling bass",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Zip between unfolding lab panels while patents reconfigure",
+          "Grapple off the Flatiron shard into a prototyping alley",
+          "Drift hoverbike around adaptive traffic nodes"
+        ]
+      },
+      "sora_tokens": [
+        "flatiron cyber lab",
+        "adaptive prototype chase",
+        "masked inventor sprint"
+      ],
+      "street_essence": "Experimental tech spills into the streets\u2014architecture shifts to defend intellectual secrets.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_chelsea_highline",
+      "name": "Chelsea Highline Flux",
+      "borough": "Manhattan",
+      "district": "Chelsea",
+      "neighborhood": "Chelsea / High Line",
+      "primary_use": "arts",
+      "adjacent": [
+        "manhattan_midtown_hells_kitchen",
+        "manhattan_flatiron_nomad",
+        "manhattan_west_village",
+        "manhattan_tribeca"
+      ],
+      "landmarks": [
+        "elevated park skyway",
+        "immersive gallery hulks"
+      ],
+      "visuals": {
+        "palette": [
+          "rose",
+          "indigo",
+          "verdant"
+        ],
+        "lighting": "Glowing vines drape the High Line while projection art rains from above",
+        "architecture": [
+          "glass warehouse lofts",
+          "repurposed rail trestles"
+        ],
+        "set_dressing": [
+          "interactive graffiti screens",
+          "solar petal sculptures"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "curator sentry drones"
+        ],
+        "inhabitants": [
+          "art smugglers"
+        ],
+        "hazards": [
+          "flashblind installations",
+          "kinetic sculpture ambushes"
+        ]
+      },
+      "creatures": [
+        "holo-hover butterflies"
+      ],
+      "audio_motif": "Mid-tempo synthwave with echoing sax fragments and sub pulses",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Dash along the High Line rail before it retracts",
+          "Leap across gallery rooftops chasing stolen art",
+          "Skim hoverbike through projection tunnels"
+        ]
+      },
+      "sora_tokens": [
+        "high line chase",
+        "gallery ruin sprint",
+        "masked curator hunter"
+      ],
+      "street_essence": "An elevated artery of art warfare\u2014projection storms and vine-laced rails demand agile traversal.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_upper_west_lincoln",
+      "name": "Lincoln Echo Terraces",
+      "borough": "Manhattan",
+      "district": "Upper West Side",
+      "neighborhood": "Lincoln Square",
+      "primary_use": "cultural",
+      "adjacent": [
+        "manhattan_central_park_south",
+        "manhattan_upper_west_side",
+        "manhattan_midtown_times_square"
+      ],
+      "landmarks": [
+        "shattered opera shells",
+        "hydroponic promenade"
+      ],
+      "visuals": {
+        "palette": [
+          "soft gold",
+          "deep burgundy",
+          "moonlit blue"
+        ],
+        "lighting": "Concert spotlights sweep through drifting mist",
+        "architecture": [
+          "fractured performance halls",
+          "floating stage fragments"
+        ],
+        "set_dressing": [
+          "broken instruments",
+          "flying stage drones"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "sonic conductor drones"
+        ],
+        "inhabitants": [
+          "masked virtuosos"
+        ],
+        "hazards": [
+          "resonance shockwaves",
+          "falling acoustic glass"
+        ]
+      },
+      "creatures": [
+        "rhythm bats"
+      ],
+      "audio_motif": "Orchestral hits over aggressive breakbeats and echoing applause loops",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Dash across tilted amphitheater terraces",
+          "Grapple onto floating stage rigging",
+          "Slide along rain-slick balustrades"
+        ]
+      },
+      "sora_tokens": [
+        "opera ruins cyberpunk",
+        "stage light storms",
+        "masked performer chase"
+      ],
+      "street_essence": "Cultural grandeur twisted into sonic warfare\u2014spotlights sweep empty plazas while echo pulses batter the skyline.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_upper_west_side",
+      "name": "Upper West Wilds",
+      "borough": "Manhattan",
+      "district": "Upper West Side",
+      "neighborhood": "Upper West Side",
+      "primary_use": "residential",
+      "adjacent": [
+        "manhattan_upper_west_lincoln",
+        "manhattan_central_park_north",
+        "manhattan_harlem"
+      ],
+      "landmarks": [
+        "ivy-clad brownstones",
+        "biosolar water towers"
+      ],
+      "visuals": {
+        "palette": [
+          "forest green",
+          "rust",
+          "soft amber"
+        ],
+        "lighting": "Canopy-filtered daylight with luminescent spore drift",
+        "architecture": [
+          "brownstone terraces overtaken by vines"
+        ],
+        "set_dressing": [
+          "carnivorous planters",
+          "mutant bird nests"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "feral arbor warden drones"
+        ],
+        "inhabitants": [
+          "foragers riding armor-plated deer"
+        ],
+        "hazards": [
+          "root tripwires",
+          "siren pollen clouds"
+        ]
+      },
+      "creatures": [
+        "genetically-augmented raccoons",
+        "glider wolves"
+      ],
+      "audio_motif": "Organic percussion blended with hunter heartbeats and distant chorales",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Vault between rooftop gardens while vines lash",
+          "Swing through canopy skybridges",
+          "Slide down temporarily sealed metro rails"
+        ]
+      },
+      "sora_tokens": [
+        "overgrown brownstones",
+        "mutant wildlife chase",
+        "masked ranger sprint"
+      ],
+      "street_essence": "Overgrowth smothers brownstones while engineered beasts patrol hushed avenues.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_central_park_south",
+      "name": "Central Park South Reflector",
+      "borough": "Manhattan",
+      "district": "Central Park",
+      "neighborhood": "Central Park South",
+      "primary_use": "recreational",
+      "adjacent": [
+        "manhattan_midtown_times_square",
+        "manhattan_upper_west_lincoln",
+        "manhattan_central_park_north",
+        "manhattan_upper_east_side",
+        "manhattan_midtown_east"
+      ],
+      "landmarks": [
+        "mirror lake shards",
+        "floating carousel drones"
+      ],
+      "visuals": {
+        "palette": [
+          "jade",
+          "silver",
+          "deep navy"
+        ],
+        "lighting": "Moonlit reflections ripple across armored ponds",
+        "architecture": [
+          "camouflaged pavilion bunkers",
+          "skybridge canopies"
+        ],
+        "set_dressing": [
+          "laser tripwire fireflies",
+          "wind-sculpted memorials"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "park ranger mechs"
+        ],
+        "inhabitants": [
+          "masked conservationists"
+        ],
+        "hazards": [
+          "mirror glare flares",
+          "sudden root wall eruptions"
+        ]
+      },
+      "creatures": [
+        "stalking stag mechs"
+      ],
+      "audio_motif": "Serrated synth pads with tribal drums and whispering winds",
+      "movement": {
+        "preferred_tech": [
+          "jetpack",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Jetpack skim above reflective lakes avoiding ranger beams",
+          "Grapple between armored tree towers",
+          "Slide across glassy bridge rails"
+        ]
+      },
+      "sora_tokens": [
+        "central park cyber canopy",
+        "mirror lake dash",
+        "masked jetpack rider"
+      ],
+      "street_essence": "Central Park\u2019s southern rim glitters with reflective traps and vigilant ranger constructs.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_central_park_north",
+      "name": "North Woods Apex",
+      "borough": "Manhattan",
+      "district": "Central Park",
+      "neighborhood": "Central Park North",
+      "primary_use": "wildreserve",
+      "adjacent": [
+        "manhattan_central_park_south",
+        "manhattan_harlem",
+        "manhattan_upper_west_side",
+        "manhattan_upper_east_side"
+      ],
+      "landmarks": [
+        "granite ravines",
+        "camouflaged observation towers"
+      ],
+      "visuals": {
+        "palette": [
+          "pine",
+          "mist gray",
+          "bioluminescent cyan"
+        ],
+        "lighting": "Twilight glow laced with bioluminescent spores",
+        "architecture": [
+          "camouflaged ranger nests",
+          "reclaimed fortifications"
+        ],
+        "set_dressing": [
+          "relic obelisks",
+          "drone snare nets"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "mutated apex predators",
+          "feral ranger drones"
+        ],
+        "inhabitants": [
+          "wraithlike hunters"
+        ],
+        "hazards": [
+          "sinkhole bogs",
+          "neural vine lashes"
+        ]
+      },
+      "creatures": [
+        "genetically-enhanced panthers",
+        "spore elk"
+      ],
+      "audio_motif": "Deep tribal percussion with predator growls and distant thunder",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Leap between mossy boulders over ravines",
+          "Grapple up observation towers to avoid predators",
+          "Board-surf down root-clogged slopes"
+        ]
+      },
+      "sora_tokens": [
+        "feral central park",
+        "predator chase canopy",
+        "masked ranger sprint"
+      ],
+      "street_essence": "A feral reserve of engineered beasts; moonlight barely pierces the overgrown canopy.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_upper_east_side",
+      "name": "Upper East Shard Ward",
+      "borough": "Manhattan",
+      "district": "Upper East Side",
+      "neighborhood": "Upper East Side",
+      "primary_use": "residential",
+      "adjacent": [
+        "manhattan_central_park_south",
+        "manhattan_central_park_north",
+        "manhattan_midtown_east",
+        "manhattan_harlem"
+      ],
+      "landmarks": [
+        "armored townhouse rows",
+        "holographic gallery arcades"
+      ],
+      "visuals": {
+        "palette": [
+          "pearl",
+          "cool cyan",
+          "muted gold"
+        ],
+        "lighting": "Polished security floodlights trace narrow corridors",
+        "architecture": [
+          "reinforced townhouses",
+          "floating gallery pods"
+        ],
+        "set_dressing": [
+          "diamond-dust lawns",
+          "shield umbrellas"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "elite guardian drones"
+        ],
+        "inhabitants": [
+          "masked preservationists"
+        ],
+        "hazards": [
+          "laser portcullis",
+          "electrified carriageways"
+        ]
+      },
+      "creatures": [
+        "ornate guard owls"
+      ],
+      "audio_motif": "Icy strings over disciplined percussion and distant choral pads",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Slip hoverbike through marble colonnades",
+          "Rocket up service shafts between mansion roofs",
+          "Weave around art preservation bubbles"
+        ]
+      },
+      "sora_tokens": [
+        "gilded barricaded avenue",
+        "laser gate dash",
+        "masked rider glimmer"
+      ],
+      "street_essence": "Gilded defenses guard curated relics; every stoop emits prismatic defenses against intruders.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_harlem",
+      "name": "Harlem Canopy Expanse",
+      "borough": "Manhattan",
+      "district": "Harlem",
+      "neighborhood": "Central Harlem",
+      "primary_use": "residential",
+      "adjacent": [
+        "manhattan_morningside_heights",
+        "manhattan_central_park_north",
+        "manhattan_upper_west_side",
+        "bronx_south_bronx"
+      ],
+      "landmarks": [
+        "overgrown brownstone boulevards",
+        "elevated jungle rail"
+      ],
+      "visuals": {
+        "palette": [
+          "deep emerald",
+          "ember orange",
+          "violet nocturne"
+        ],
+        "lighting": "Aurora-like biolights shimmer through dense foliage",
+        "architecture": [
+          "lush brownstones",
+          "converted churches"
+        ],
+        "set_dressing": [
+          "phosphor vines",
+          "mutated mural fauna"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "territorial beastmasters",
+          "feral drone packs"
+        ],
+        "inhabitants": [
+          "tribes of soundcasters"
+        ],
+        "hazards": [
+          "sonic ambush corridors",
+          "vines that constrict on EM pulses"
+        ]
+      },
+      "creatures": [
+        "mutated silverback panthers",
+        "swarm crows"
+      ],
+      "audio_motif": "Polyrhythmic drumlines with roaring bass and jungle ambience",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Vault across canopy footbridges above drum squares",
+          "Swing around vine-wrapped water towers",
+          "Slide down improvised cable lines"
+        ]
+      },
+      "sora_tokens": [
+        "harlem urban jungle",
+        "mutant wildlife ambush",
+        "masked runner drum pulse"
+      ],
+      "street_essence": "A living jungle reclaims brownstones; tribal rhythms echo while engineered beasts prowl.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_morningside_heights",
+      "name": "Morningside Signal Ridge",
+      "borough": "Manhattan",
+      "district": "Morningside Heights",
+      "neighborhood": "Morningside Heights",
+      "primary_use": "academic",
+      "adjacent": [
+        "manhattan_harlem",
+        "manhattan_upper_west_side",
+        "manhattan_columbia_plates"
+      ],
+      "landmarks": [
+        "levitating lecture halls",
+        "shielded cathedral domes"
+      ],
+      "visuals": {
+        "palette": [
+          "midnight blue",
+          "copper",
+          "soft white"
+        ],
+        "lighting": "Beacon towers sweep coded signals across the ridge",
+        "architecture": [
+          "floating lecture plates",
+          "gothic spires with antennas"
+        ],
+        "set_dressing": [
+          "quantum chalkfields",
+          "holographic ivy"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "logic sentinel constructs"
+        ],
+        "inhabitants": [
+          "cloistered scholars hacking reality kernels"
+        ],
+        "hazards": [
+          "logic traps",
+          "intelligence dampening fog"
+        ]
+      },
+      "creatures": [
+        "data ravens"
+      ],
+      "audio_motif": "Ethereal choirs over glitch beats and bell tolls",
+      "movement": {
+        "preferred_tech": [
+          "grappling_hook",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Grapple between floating lecture plates",
+          "Jetpack through stained-glass light wells",
+          "Sprint across whispering cloister bridges"
+        ]
+      },
+      "sora_tokens": [
+        "academic citadel",
+        "signal beacon ridge",
+        "masked scholar chase"
+      ],
+      "street_essence": "Knowledge citadel turned fortress; radio prismatic beams cut the night as scholars defend their archives.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_columbia_plates",
+      "name": "Columbia Plate Array",
+      "borough": "Manhattan",
+      "district": "Morningside Heights",
+      "neighborhood": "Columbia Campus",
+      "primary_use": "research",
+      "adjacent": [
+        "manhattan_morningside_heights",
+        "manhattan_harlem",
+        "manhattan_washington_heights"
+      ],
+      "landmarks": [
+        "floating research plates",
+        "superconductive quad"
+      ],
+      "visuals": {
+        "palette": [
+          "menthol green",
+          "silver",
+          "holographic purple"
+        ],
+        "lighting": "Auroral data streams weave between levitating platforms",
+        "architecture": [
+          "suspended labs",
+          "modular towers"
+        ],
+        "set_dressing": [
+          "tachyon coils",
+          "floating book halos"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "autonomous exam sentinels",
+          "chrono engineers gone rogue"
+        ],
+        "inhabitants": [
+          "student collectives sharing schematics"
+        ],
+        "hazards": [
+          "phase-shift gaps",
+          "memory fog pulses"
+        ]
+      },
+      "creatures": [
+        "glitch lemurs"
+      ],
+      "audio_motif": "Neon arpeggios layered over binaural beats and crisp snares",
+      "movement": {
+        "preferred_tech": [
+          "jetpack",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Jetpack hop between quantum plates",
+          "Grapple up superconductive cables",
+          "Slide along energy rails before they phase out"
+        ]
+      },
+      "sora_tokens": [
+        "floating campus",
+        "quantum plate chase",
+        "masked scholar rider"
+      ],
+      "street_essence": "A laboratory constellation suspended over Broadway, humming with unstable experiments.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_washington_heights",
+      "name": "Washington Heights Skybridge",
+      "borough": "Manhattan",
+      "district": "Washington Heights",
+      "neighborhood": "Washington Heights",
+      "primary_use": "residential",
+      "adjacent": [
+        "manhattan_columbia_plates",
+        "manhattan_harlem",
+        "bronx_fordham",
+        "manhattan_inwood_cliffs"
+      ],
+      "landmarks": [
+        "skybridge barrios",
+        "drone-baiting water towers"
+      ],
+      "visuals": {
+        "palette": [
+          "crimson",
+          "sunset gold",
+          "electric blue"
+        ],
+        "lighting": "Lantern festivals glow through fortified terraces",
+        "architecture": [
+          "stacked tenements",
+          "cable-linked roofs"
+        ],
+        "set_dressing": [
+          "hanging lanterns",
+          "makeshift energy shields"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "borderline enforcers",
+          "skybridge snipers"
+        ],
+        "inhabitants": [
+          "community defenders"
+        ],
+        "hazards": [
+          "collapsing cable bridges",
+          "plasma net traps"
+        ]
+      },
+      "creatures": [
+        "glow parrots"
+      ],
+      "audio_motif": "Latin percussion fused with driving synth bass and crowd chants",
+      "movement": {
+        "preferred_tech": [
+          "grappling_hook",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Whip across cable bridges before they sever",
+          "Weave hoverbike through tight market terraces",
+          "Wall-run along mural-lit towers"
+        ]
+      },
+      "sora_tokens": [
+        "skybridge barrio",
+        "lantern chase",
+        "masked defender sprint"
+      ],
+      "street_essence": "A ridge of skybridges strung with festival lights disguising fierce defenders.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_inwood_cliffs",
+      "name": "Inwood Cliff Sanctum",
+      "borough": "Manhattan",
+      "district": "Inwood",
+      "neighborhood": "Inwood",
+      "primary_use": "sanctuary",
+      "adjacent": [
+        "manhattan_washington_heights",
+        "bronx_fordham"
+      ],
+      "landmarks": [
+        "cliffside fortresses",
+        "bio-spawned river docks"
+      ],
+      "visuals": {
+        "palette": [
+          "jade",
+          "aurora violet",
+          "river silver"
+        ],
+        "lighting": "Polar lights cascade over fortified cliffs",
+        "architecture": [
+          "stone bastions",
+          "camouflaged river nests"
+        ],
+        "set_dressing": [
+          "driftwood barricades",
+          "suspended rope gardens"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "cliffside guardians",
+          "riverborn sentries"
+        ],
+        "inhabitants": [
+          "reclusive shamans"
+        ],
+        "hazards": [
+          "tidal surge lifts",
+          "gravity wells"
+        ]
+      },
+      "creatures": [
+        "bioluminescent river serpents"
+      ],
+      "audio_motif": "Ambient choirs with heavy drums and flowing water samples",
+      "movement": {
+        "preferred_tech": [
+          "jetpack",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Jetpack crest over fortress walls",
+          "Sprint along cliff edges before tidal surges hit",
+          "Slide down mossy switchbacks"
+        ]
+      },
+      "sora_tokens": [
+        "cliffside sanctuary",
+        "aurora cliff chase",
+        "masked guardian run"
+      ],
+      "street_essence": "Northern sanctuary carved into cliffs, guarded by river spirits and stealth sentries.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_soho",
+      "name": "SoHo Sentry Grid",
+      "borough": "Manhattan",
+      "district": "SoHo",
+      "neighborhood": "SoHo",
+      "primary_use": "arts",
+      "adjacent": [
+        "manhattan_nolita",
+        "manhattan_chinatown",
+        "manhattan_west_village",
+        "manhattan_tribeca",
+        "manhattan_flatiron_nomad"
+      ],
+      "landmarks": [
+        "cast-iron galleries",
+        "neon graffiti lofts"
+      ],
+      "visuals": {
+        "palette": [
+          "ultraviolet",
+          "electric cyan",
+          "charcoal"
+        ],
+        "lighting": "Laser grid sweeps and neon mist bathe cobblestones",
+        "architecture": [
+          "cast-iron facades",
+          "glass lofts"
+        ],
+        "set_dressing": [
+          "stealth barricades",
+          "projection art"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "stealth robotic sentries"
+        ],
+        "inhabitants": [
+          "masked artists hacking surveillance"
+        ],
+        "hazards": [
+          "shadow nets",
+          "EM pulse mines"
+        ]
+      },
+      "creatures": [
+        "camouflage ferrets"
+      ],
+      "audio_motif": "Minimal techno with sharp snaps and doppler lasers",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Wall-run along cast-iron fire escapes between laser grids",
+          "Grapple through skylight studios",
+          "Slide under stealth drones before cloaks engage"
+        ]
+      },
+      "sora_tokens": [
+        "neon soho",
+        "stealth sentry grid",
+        "masked parkour flash"
+      ],
+      "street_essence": "Art district turned surveillance gauntlet\u2014stealth drones patrol neon alleys over cobblestones.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_nolita",
+      "name": "NoLita Micro Sanctuary",
+      "borough": "Manhattan",
+      "district": "NoLita",
+      "neighborhood": "NoLita",
+      "primary_use": "mixed",
+      "adjacent": [
+        "manhattan_soho",
+        "manhattan_lower_east_side",
+        "manhattan_chinatown",
+        "manhattan_east_village"
+      ],
+      "landmarks": [
+        "micro greenhouses",
+        "drone-free bazaars"
+      ],
+      "visuals": {
+        "palette": [
+          "sage",
+          "warm copper",
+          "neon rose"
+        ],
+        "lighting": "Lantern-lit alleys with soft hologram veils",
+        "architecture": [
+          "low-rise lofts",
+          "converted churches"
+        ],
+        "set_dressing": [
+          "micro farm shelves",
+          "shielded stoops"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "silent guardian drones"
+        ],
+        "inhabitants": [
+          "peace brokers"
+        ],
+        "hazards": [
+          "tranquilizer mist",
+          "pulse silence zones"
+        ]
+      },
+      "creatures": [
+        "glowtail cats"
+      ],
+      "audio_motif": "Downtempo pulses with heartbeat subs and choral whispers",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Sprint across rooftop gardens while drones sleep",
+          "Grapple away from hush-field emitters",
+          "Slide through shrine courtyards before shutters seal"
+        ]
+      },
+      "sora_tokens": [
+        "nolita sanctuary",
+        "lantern alley dash",
+        "masked envoy glide"
+      ],
+      "street_essence": "Tight-knit sanctuaries buffer the storm with calm tech\u2014until silence fields snap shut.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_chinatown",
+      "name": "Chinatown Signal Bazaar",
+      "borough": "Manhattan",
+      "district": "Chinatown",
+      "neighborhood": "Chinatown",
+      "primary_use": "market",
+      "adjacent": [
+        "manhattan_soho",
+        "manhattan_nolita",
+        "manhattan_lower_east_side",
+        "manhattan_financial_district"
+      ],
+      "landmarks": [
+        "vertical night markets",
+        "data lantern canopies"
+      ],
+      "visuals": {
+        "palette": [
+          "crimson",
+          "jade",
+          "gold"
+        ],
+        "lighting": "Dragon holograms burst through steam-lit alleys",
+        "architecture": [
+          "pagoda towers",
+          "stacked shophouses"
+        ],
+        "set_dressing": [
+          "hanging neon banners",
+          "incense fog"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "triad drone handlers"
+        ],
+        "inhabitants": [
+          "mask vendors"
+        ],
+        "hazards": [
+          "credit siphon traps",
+          "steam scald vents"
+        ]
+      },
+      "creatures": [
+        "augmented koi swarms"
+      ],
+      "audio_motif": "Gamelan-infused trap beats with firecracker percussion",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Weave hoverbike through lantern canopies",
+          "Dash across rooftop stalls before they collapse",
+          "Vault through dragon hologram gates"
+        ]
+      },
+      "sora_tokens": [
+        "cyber dragon market",
+        "lantern data bazaar",
+        "masked courier zigzag"
+      ],
+      "street_essence": "Hyper-dense bazaars flash coded lantern signals while triad drones guard contraband.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_lower_east_side",
+      "name": "Lower East Reclaimer",
+      "borough": "Manhattan",
+      "district": "Lower East Side",
+      "neighborhood": "Lower East Side",
+      "primary_use": "resistance",
+      "adjacent": [
+        "manhattan_nolita",
+        "manhattan_east_village",
+        "manhattan_chinatown"
+      ],
+      "landmarks": [
+        "solar tarp tenements",
+        "makeshift barricade boulevards"
+      ],
+      "visuals": {
+        "palette": [
+          "amber",
+          "graffiti teal",
+          "carbon"
+        ],
+        "lighting": "Power siphoning rigs flicker over reclaimed housing blocks",
+        "architecture": [
+          "tenement stacks",
+          "recycled shipping pods"
+        ],
+        "set_dressing": [
+          "graffiti barricades",
+          "community signal flames"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "resistance turret drones"
+        ],
+        "inhabitants": [
+          "street medics"
+        ],
+        "hazards": [
+          "emp pulse mines",
+          "trapdoor alleys"
+        ]
+      },
+      "creatures": [
+        "feral courier rats"
+      ],
+      "audio_motif": "Urban breakbeats with protest chants and grinding bass",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Springboard off anti-corp posters to clear barricades",
+          "Thread hoverbike through narrow protest corridors",
+          "Slide beneath barricade shutters before they slam"
+        ]
+      },
+      "sora_tokens": [
+        "lower east resistance",
+        "barricade sprint",
+        "masked rebel dash"
+      ],
+      "street_essence": "Rebel collectives fortify tenements with power siphons and graffiti-coded defenses.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_east_village",
+      "name": "East Village Resonant",
+      "borough": "Manhattan",
+      "district": "East Village",
+      "neighborhood": "East Village",
+      "primary_use": "cultural",
+      "adjacent": [
+        "manhattan_lower_east_side",
+        "manhattan_nolita",
+        "manhattan_west_village"
+      ],
+      "landmarks": [
+        "sonic dive bars",
+        "reactive street art"
+      ],
+      "visuals": {
+        "palette": [
+          "neon violet",
+          "acid green",
+          "ink black"
+        ],
+        "lighting": "Sound-reactive murals pulse with glitch light",
+        "architecture": [
+          "converted brownstones",
+          "basement clubs"
+        ],
+        "set_dressing": [
+          "amp towers",
+          "projected zines"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "soundwave blasters"
+        ],
+        "inhabitants": [
+          "DJ cell networks"
+        ],
+        "hazards": [
+          "feedback traps",
+          "bass quake charges"
+        ]
+      },
+      "creatures": [
+        "amp lizards"
+      ],
+      "audio_motif": "Riotous breakcore with feedback squeals and heavy subs",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Bounce between club rooftops ahead of sonic waves",
+          "Skid hoverbike around amp pylons",
+          "Dive through soundproof doors moments before bass detonations"
+        ]
+      },
+      "sora_tokens": [
+        "east village bass run",
+        "glitch mural chase",
+        "masked DJ dash"
+      ],
+      "street_essence": "Counterculture beats weaponize the avenues, turning every mural into a trap line.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_west_village",
+      "name": "West Village Veil",
+      "borough": "Manhattan",
+      "district": "West Village",
+      "neighborhood": "West Village",
+      "primary_use": "residential",
+      "adjacent": [
+        "manhattan_east_village",
+        "manhattan_soho",
+        "manhattan_tribeca"
+      ],
+      "landmarks": [
+        "shielded courtyards",
+        "cobblestone mazes"
+      ],
+      "visuals": {
+        "palette": [
+          "warm amber",
+          "moonlit silver",
+          "shadow green"
+        ],
+        "lighting": "Candlelit safehouses spill light through ivy arches",
+        "architecture": [
+          "townhouse labyrinths",
+          "hidden courtyards"
+        ],
+        "set_dressing": [
+          "holo veils",
+          "silent signal lanterns"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "specter wardens"
+        ],
+        "inhabitants": [
+          "refuge guides"
+        ],
+        "hazards": [
+          "sleep mist",
+          "mirror decoys"
+        ]
+      },
+      "creatures": [
+        "spirit hounds"
+      ],
+      "audio_motif": "Cinematic strings over subdued beats and whispered choirs",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Weave through alley mazes before veils close",
+          "Grapple over ivy-coated townhouses",
+          "Slide beneath cloaking fields to reach hidden courtyards"
+        ]
+      },
+      "sora_tokens": [
+        "west village sanctuary",
+        "cobblestone veil dash",
+        "masked refuge runner"
+      ],
+      "street_essence": "A network of refuges hidden behind cloaking veils safeguards allies from the war outside.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_tribeca",
+      "name": "TriBeCa Slipstream",
+      "borough": "Manhattan",
+      "district": "TriBeCa",
+      "neighborhood": "TriBeCa",
+      "primary_use": "industrial",
+      "adjacent": [
+        "manhattan_west_village",
+        "manhattan_soho",
+        "manhattan_financial_district",
+        "manhattan_chelsea_highline"
+      ],
+      "landmarks": [
+        "canal turbine locks",
+        "data loft silos"
+      ],
+      "visuals": {
+        "palette": [
+          "steel",
+          "turquoise",
+          "amber"
+        ],
+        "lighting": "Maritime fog glows with augmented reality adverts",
+        "architecture": [
+          "warehouse lofts",
+          "reinforced piers"
+        ],
+        "set_dressing": [
+          "canal light curtains",
+          "dockside cranes"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "port clearance drones"
+        ],
+        "inhabitants": [
+          "contraband nav crews"
+        ],
+        "hazards": [
+          "tidal surge traps",
+          "gantry swings"
+        ]
+      },
+      "creatures": [
+        "cyber egrets"
+      ],
+      "audio_motif": "Rolling basslines with ship horn motifs and metallic percussion",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Jet through canal locks before floodgates slam",
+          "Drift hoverbike along pier cranes",
+          "Vault onto floating cargo pallets"
+        ]
+      },
+      "sora_tokens": [
+        "tribeca dock sprint",
+        "canal turbine dash",
+        "masked smuggler run"
+      ],
+      "street_essence": "Docklands repurposed as data canals and contraband routes; tidal surges keep everyone moving fast.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "manhattan_financial_district",
+      "name": "FiDi Drone Bastion",
+      "borough": "Manhattan",
+      "district": "Financial District",
+      "neighborhood": "Financial District",
+      "primary_use": "financial",
+      "adjacent": [
+        "manhattan_tribeca",
+        "manhattan_chinatown",
+        "manhattan_battery_park"
+      ],
+      "landmarks": [
+        "glass canyon avenues",
+        "collapsed stock exchanges"
+      ],
+      "visuals": {
+        "palette": [
+          "steel gray",
+          "warning orange",
+          "electric blue"
+        ],
+        "lighting": "Searchlight grids rake shattered glass corridors",
+        "architecture": [
+          "glass skyscrapers",
+          "armored trading floors"
+        ],
+        "set_dressing": [
+          "surveillance pylons",
+          "drone nests"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "rogue militarized AI security drones"
+        ],
+        "inhabitants": [
+          "data brokers in exosuits"
+        ],
+        "hazards": [
+          "shrapnel gusts",
+          "plasma trip beams"
+        ]
+      },
+      "creatures": [
+        "sentry gulls"
+      ],
+      "audio_motif": "Hammering drums with alarm stabs and heavy synth engines",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Lane-split hoverbike through drone cordons",
+          "Jetpack up glass facades under suppressive fire",
+          "Dive between shattered sky bridges as searchlights sweep"
+        ]
+      },
+      "sora_tokens": [
+        "financial district drone war",
+        "glass canyon sprint",
+        "masked rider vs drones"
+      ],
+      "street_essence": "Collapsed stock markets now house relentless drone patrols firing across glass canyons.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "manhattan_battery_park",
+      "name": "Battery Stormfront",
+      "borough": "Manhattan",
+      "district": "Battery Park",
+      "neighborhood": "Battery Park",
+      "primary_use": "coastal",
+      "adjacent": [
+        "manhattan_financial_district",
+        "brooklyn_dumbo",
+        "staten_st_george"
+      ],
+      "landmarks": [
+        "tidal defense walls",
+        "ferris ferry ruins"
+      ],
+      "visuals": {
+        "palette": [
+          "storm blue",
+          "seafoam",
+          "corroded bronze"
+        ],
+        "lighting": "Lightning storms arc across wave-breaker shields",
+        "architecture": [
+          "floodwalls",
+          "reinforced promenades"
+        ],
+        "set_dressing": [
+          "kinetic tide turbines",
+          "emergency ballast crates"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "coastal artillery drones"
+        ],
+        "inhabitants": [
+          "evacuation captains"
+        ],
+        "hazards": [
+          "sudden tidal lashes",
+          "electrified spray"
+        ]
+      },
+      "creatures": [
+        "amphibious stingrays"
+      ],
+      "audio_motif": "Thunderous drums with crashing waves and siren horns",
+      "movement": {
+        "preferred_tech": [
+          "jetpack",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Jetpack over tidal walls as waves detonate",
+          "Power-slide hoverbike along wet promenade",
+          "Leap across ferry wreckage before lightning strikes"
+        ]
+      },
+      "sora_tokens": [
+        "battery stormfront",
+        "tidal wall dash",
+        "masked storm rider"
+      ],
+      "street_essence": "The harbor roars with kinetic storms while artillery drones guard the evacuation nodes.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "brooklyn_dumbo",
+      "name": "DUMBO Resonant Bridges",
+      "borough": "Brooklyn",
+      "district": "DUMBO",
+      "neighborhood": "DUMBO",
+      "primary_use": "industrial",
+      "adjacent": [
+        "brooklyn_brooklyn_heights",
+        "brooklyn_williamsburg",
+        "manhattan_battery_park"
+      ],
+      "landmarks": [
+        "suspended bridge decks",
+        "cobblestone tunnels"
+      ],
+      "visuals": {
+        "palette": [
+          "electric blue",
+          "copper",
+          "slate"
+        ],
+        "lighting": "Bridge underbellies pulse with hacked floodlights",
+        "architecture": [
+          "brick warehouses",
+          "bridge pylons"
+        ],
+        "set_dressing": [
+          "projected graffiti",
+          "rain-slick cobbles"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "bridge sentry drones"
+        ],
+        "inhabitants": [
+          "signal hijackers"
+        ],
+        "hazards": [
+          "siren net drops",
+          "electromagnetic gusts"
+        ]
+      },
+      "creatures": [
+        "gear bats"
+      ],
+      "audio_motif": "Syncopated beats with metallic clangs and reverb plucks",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Race hoverbike beneath bridge arches",
+          "Grapple up support cables to evade patrols",
+          "Drift through cobblestone tunnels with inches to spare"
+        ]
+      },
+      "sora_tokens": [
+        "dumbo bridge sprint",
+        "cobblestone drift",
+        "masked signal rider"
+      ],
+      "street_essence": "Bridge shadows hide signal hijackers and patrolling drones; every arch is a test of control.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "brooklyn_brooklyn_heights",
+      "name": "Brooklyn Heights Citadel",
+      "borough": "Brooklyn",
+      "district": "Brooklyn Heights",
+      "neighborhood": "Brooklyn Heights",
+      "primary_use": "residential",
+      "adjacent": [
+        "brooklyn_dumbo",
+        "brooklyn_red_hook",
+        "brooklyn_cobble_hill"
+      ],
+      "landmarks": [
+        "reinforced promenade",
+        "aegis brownstones"
+      ],
+      "visuals": {
+        "palette": [
+          "navy",
+          "candlelight",
+          "bronze"
+        ],
+        "lighting": "Shield projectors glow along the esplanade",
+        "architecture": [
+          "brownstone terraces",
+          "defensive towers"
+        ],
+        "set_dressing": [
+          "energy shield awnings",
+          "lantern beacons"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "aegis caretakers"
+        ],
+        "inhabitants": [
+          "neighborhood wardens"
+        ],
+        "hazards": [
+          "shield collapse bursts",
+          "gravity well tripwires"
+        ]
+      },
+      "creatures": [
+        "luminescent pigeons"
+      ],
+      "audio_motif": "Majestic pads with deep drums and protective chants",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Parkour along shielded promenades",
+          "Grapple up fortified stair towers",
+          "Slide beneath descending shield domes"
+        ]
+      },
+      "sora_tokens": [
+        "brooklyn heights citadel",
+        "shield promenade dash",
+        "masked warden run"
+      ],
+      "street_essence": "A fortified neighborhood balancing elegance and defense; shields reshape streets in seconds.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "brooklyn_williamsburg",
+      "name": "Williamsburg Pulse Grid",
+      "borough": "Brooklyn",
+      "district": "Williamsburg",
+      "neighborhood": "Williamsburg",
+      "primary_use": "cultural",
+      "adjacent": [
+        "brooklyn_dumbo",
+        "brooklyn_bushwick",
+        "brooklyn_crown_heights",
+        "queens_long_island_city"
+      ],
+      "landmarks": [
+        "pulse warehouses",
+        "drone mural yards"
+      ],
+      "visuals": {
+        "palette": [
+          "hot pink",
+          "aqua",
+          "charcoal"
+        ],
+        "lighting": "Audio-reactive billboards strobe over riverfront lofts",
+        "architecture": [
+          "converted factories",
+          "microbrewer rooftops"
+        ],
+        "set_dressing": [
+          "light tunnels",
+          "graffiti speakers"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "sound grid enforcers"
+        ],
+        "inhabitants": [
+          "club collectives"
+        ],
+        "hazards": [
+          "bass drop pits",
+          "light blinder storms"
+        ]
+      },
+      "creatures": [
+        "neon foxes"
+      ],
+      "audio_motif": "Electroclash beats with grinding bass and chopped vocals",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Surf hoverbike along LED riverwalks",
+          "Vault between rooftop parties",
+          "Duck under bass cannons before they fire"
+        ]
+      },
+      "sora_tokens": [
+        "williamsburg pulse",
+        "riverfront rave chase",
+        "masked rider glow"
+      ],
+      "street_essence": "Nightlife tech weaponized into pulse grids controlling the waterfront rush.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "brooklyn_bushwick",
+      "name": "Bushwick Print Forge",
+      "borough": "Brooklyn",
+      "district": "Bushwick",
+      "neighborhood": "Bushwick",
+      "primary_use": "industrial",
+      "adjacent": [
+        "brooklyn_williamsburg",
+        "brooklyn_crown_heights",
+        "queens_long_island_city"
+      ],
+      "landmarks": [
+        "3D print foundries",
+        "graffiti cathedrals"
+      ],
+      "visuals": {
+        "palette": [
+          "neon orange",
+          "cyan",
+          "graphite"
+        ],
+        "lighting": "Spray-plasma printers ignite alleys with molten light",
+        "architecture": [
+          "factory rows",
+          "warehouse lofts"
+        ],
+        "set_dressing": [
+          "mech graffiti",
+          "print farms"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "replicator gangs"
+        ],
+        "inhabitants": [
+          "biohack collectives"
+        ],
+        "hazards": [
+          "polymer sinkholes",
+          "printer flare blasts"
+        ]
+      },
+      "creatures": [
+        "mutant raccoons"
+      ],
+      "audio_motif": "Hard trap beats fused with printer chatter and sawtooth leads",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Run along conveyor scaffolds while prints extrude",
+          "Grapple past molten spray arches",
+          "Slide across resin-coated rails"
+        ]
+      },
+      "sora_tokens": [
+        "bushwick print forge",
+        "molten graffiti run",
+        "masked maker dash"
+      ],
+      "street_essence": "Fabricators run nonstop, pumping out weapons and art in molten bursts\u2014traversal demands speed.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "brooklyn_red_hook",
+      "name": "Red Hook Tide Forge",
+      "borough": "Brooklyn",
+      "district": "Red Hook",
+      "neighborhood": "Red Hook",
+      "primary_use": "dockyard",
+      "adjacent": [
+        "brooklyn_brooklyn_heights",
+        "brooklyn_cobble_hill",
+        "brooklyn_crown_heights"
+      ],
+      "landmarks": [
+        "container mazes",
+        "tidal crane yards"
+      ],
+      "visuals": {
+        "palette": [
+          "rust",
+          "sea green",
+          "storm gray"
+        ],
+        "lighting": "Lightning halos strike over dock gantries",
+        "architecture": [
+          "ship hull warehouses",
+          "crane towers"
+        ],
+        "set_dressing": [
+          "floating dry docks",
+          "oilfire pools"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "dock titan mechs"
+        ],
+        "inhabitants": [
+          "smuggler clans"
+        ],
+        "hazards": [
+          "tidal backlash",
+          "slick oil slides"
+        ]
+      },
+      "creatures": [
+        "amphibious sharks"
+      ],
+      "audio_motif": "Heavy industrial beats with distorted sirens and crashing metal",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Boost hoverbike along crane rails above tidal surges",
+          "Jetpack leap across container stacks",
+          "Duck beneath swinging cargo nets"
+        ]
+      },
+      "sora_tokens": [
+        "red hook dock sprint",
+        "container canyon dash",
+        "masked tide rider"
+      ],
+      "street_essence": "Storm-battered docks forged into war yards\u2014massive cranes swing hazards across every line.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "brooklyn_crown_heights",
+      "name": "Crown Heights Prism",
+      "borough": "Brooklyn",
+      "district": "Crown Heights",
+      "neighborhood": "Crown Heights",
+      "primary_use": "residential",
+      "adjacent": [
+        "brooklyn_williamsburg",
+        "brooklyn_bushwick",
+        "brooklyn_red_hook",
+        "brooklyn_cobble_hill",
+        "queens_jackson_heights"
+      ],
+      "landmarks": [
+        "prism synagogues",
+        "community shield domes"
+      ],
+      "visuals": {
+        "palette": [
+          "prism violet",
+          "gold",
+          "cerulean"
+        ],
+        "lighting": "Prismatic shields refract streetlights into rainbow barrages",
+        "architecture": [
+          "rowhouse avenues",
+          "civic domes"
+        ],
+        "set_dressing": [
+          "faith-coded murals",
+          "festival pennants"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "shield cantor units"
+        ],
+        "inhabitants": [
+          "community guardians"
+        ],
+        "hazards": [
+          "light refraction flares",
+          "magnetic faith locks"
+        ]
+      },
+      "creatures": [
+        "choir sparrows"
+      ],
+      "audio_motif": "Gospel-inspired vocals over pounding drums and shimmering synth choirs",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Trace parkour lines along prismatic domes",
+          "Slide hoverbike beneath refracted laser curtains",
+          "Vault through festival arches before shields solidify"
+        ]
+      },
+      "sora_tokens": [
+        "crown heights prism",
+        "rainbow barricade dash",
+        "masked guardian glide"
+      ],
+      "street_essence": "Unity forces refract light into barriers and traps, demanding quick thinking and speed.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "brooklyn_cobble_hill",
+      "name": "Cobble Hill Clinic",
+      "borough": "Brooklyn",
+      "district": "Cobble Hill",
+      "neighborhood": "Cobble Hill",
+      "primary_use": "medical",
+      "adjacent": [
+        "brooklyn_brooklyn_heights",
+        "brooklyn_red_hook",
+        "brooklyn_crown_heights"
+      ],
+      "landmarks": [
+        "triage brownstones",
+        "pharma greenhouse"
+      ],
+      "visuals": {
+        "palette": [
+          "pastel green",
+          "white",
+          "soft rose"
+        ],
+        "lighting": "Emergency holograms project triage status in calm tones",
+        "architecture": [
+          "converted clinics",
+          "med supply depots"
+        ],
+        "set_dressing": [
+          "hover stretchers",
+          "nanobot mist"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "biohazard sentinels"
+        ],
+        "inhabitants": [
+          "med-tech volunteers"
+        ],
+        "hazards": [
+          "sterilization floods",
+          "autodoc arm grabs"
+        ]
+      },
+      "creatures": [
+        "nano doves"
+      ],
+      "audio_motif": "Ambient pulses with steady heartbeats and gentle bells",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Hurdle medical drones while shielding evacuees",
+          "Grapple up clinic skylights to bypass sterilization waves",
+          "Slide between nanobot curtains"
+        ]
+      },
+      "sora_tokens": [
+        "cobble hill clinic dash",
+        "nanobot rescue",
+        "masked medic sprint"
+      ],
+      "street_essence": "Medical sanctuaries juggle rescue operations and biohazard containment; speed is survival.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "queens_long_island_city",
+      "name": "LIC Gantry Nexus",
+      "borough": "Queens",
+      "district": "Long Island City",
+      "neighborhood": "Long Island City",
+      "primary_use": "industrial",
+      "adjacent": [
+        "brooklyn_williamsburg",
+        "brooklyn_bushwick",
+        "queens_astoria",
+        "queens_jackson_heights"
+      ],
+      "landmarks": [
+        "gantry crane forests",
+        "holographic court towers"
+      ],
+      "visuals": {
+        "palette": [
+          "neon cobalt",
+          "tangerine",
+          "slate"
+        ],
+        "lighting": "Reflected skyline glows across East River turbines",
+        "architecture": [
+          "glass loft towers",
+          "industrial gantries"
+        ],
+        "set_dressing": [
+          "maglev test tracks",
+          "floating light docks"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "lic security swarms"
+        ],
+        "inhabitants": [
+          "tech exchange brokers"
+        ],
+        "hazards": [
+          "rail trap switches",
+          "light curtain snares"
+        ]
+      },
+      "creatures": [
+        "hover gulls"
+      ],
+      "audio_motif": "Techno pulses layered with metallic hits and hydraulic swells",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Drift hoverbike along maglev test tracks",
+          "Jetpack between gantry arms as lights strobe",
+          "Dive through floating docks before they cube-lock"
+        ]
+      },
+      "sora_tokens": [
+        "lic gantry sprint",
+        "river skyline dash",
+        "masked broker chase"
+      ],
+      "street_essence": "A skyline workshop where gantries and maglev rails create constant motion traps.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "queens_astoria",
+      "name": "Astoria Reactor Gardens",
+      "borough": "Queens",
+      "district": "Astoria",
+      "neighborhood": "Astoria",
+      "primary_use": "utility",
+      "adjacent": [
+        "queens_long_island_city",
+        "queens_flushing_meadows",
+        "bronx_south_bronx"
+      ],
+      "landmarks": [
+        "power plant greenhouses",
+        "hydroponic terraces"
+      ],
+      "visuals": {
+        "palette": [
+          "lime",
+          "electric blue",
+          "sunset orange"
+        ],
+        "lighting": "Turbine glow bathes hydroponic terraces in shifting light",
+        "architecture": [
+          "reactor stacks",
+          "garden towers"
+        ],
+        "set_dressing": [
+          "coolant mist",
+          "drone pollinators"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "reactor wardens"
+        ],
+        "inhabitants": [
+          "garden engineers"
+        ],
+        "hazards": [
+          "coolant geysers",
+          "magnetic pollen clouds"
+        ]
+      },
+      "creatures": [
+        "bioelectric bees"
+      ],
+      "audio_motif": "Worldbeat rhythms over humming turbines and vapor hiss",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Skim hoverbike over coolant channels",
+          "Leap between greenhouse catwalks",
+          "Slide along reactor pipes while dodging pollen clouds"
+        ]
+      },
+      "sora_tokens": [
+        "astoria reactor gardens",
+        "hydroponic chase",
+        "masked engineer run"
+      ],
+      "street_essence": "Power infrastructure doubles as food haven\u2014reactors and gardens intertwine in glowing motion.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "queens_flushing_meadows",
+      "name": "Flushing Mecha Meadows",
+      "borough": "Queens",
+      "district": "Flushing Meadows",
+      "neighborhood": "Flushing Meadows",
+      "primary_use": "expo",
+      "adjacent": [
+        "queens_astoria",
+        "queens_jackson_heights"
+      ],
+      "landmarks": [
+        "Unisphere drones",
+        "mecha pavilions"
+      ],
+      "visuals": {
+        "palette": [
+          "azure",
+          "mint",
+          "silver"
+        ],
+        "lighting": "World's Fair relics animate into guardian mechs",
+        "architecture": [
+          "expo pavilions",
+          "stadium shells"
+        ],
+        "set_dressing": [
+          "projected constellations",
+          "hover monorails"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "expo guardian mechs"
+        ],
+        "inhabitants": [
+          "fairground archivists"
+        ],
+        "hazards": [
+          "gravity well plazas",
+          "holo maze walls"
+        ]
+      },
+      "creatures": [
+        "servo cranes"
+      ],
+      "audio_motif": "Orchestral swells fused with futuristic percussion and crowd roars",
+      "movement": {
+        "preferred_tech": [
+          "jetpack",
+          "agile_hoverbike"
+        ],
+        "traversal_calls": [
+          "Jetpack around the Unisphere while mechs awaken",
+          "Race hoverbike along monorail spines",
+          "Duck through pavilion doors before holograms solidify"
+        ]
+      },
+      "sora_tokens": [
+        "flushing mecha fair",
+        "unisphere sprint",
+        "masked expo dash"
+      ],
+      "street_essence": "A reanimated World's Fair where colossal mechs patrol icon relics.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "queens_jackson_heights",
+      "name": "Jackson Heights Sky Bazaar",
+      "borough": "Queens",
+      "district": "Jackson Heights",
+      "neighborhood": "Jackson Heights",
+      "primary_use": "market",
+      "adjacent": [
+        "queens_long_island_city",
+        "queens_flushing_meadows",
+        "brooklyn_crown_heights"
+      ],
+      "landmarks": [
+        "stacked sky bazaars",
+        "alley drone ports"
+      ],
+      "visuals": {
+        "palette": [
+          "saffron",
+          "cerulean",
+          "violet"
+        ],
+        "lighting": "Tiered markets float above buzzing streets, awash in festival light",
+        "architecture": [
+          "multi-layered markets",
+          "hanging terrace malls"
+        ],
+        "set_dressing": [
+          "glowing prayer flags",
+          "floating vendor stalls"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "bazaar guardian swarms"
+        ],
+        "inhabitants": [
+          "merchants threading sky alleys"
+        ],
+        "hazards": [
+          "confetti chaff bursts",
+          "elevator shaft ambushes"
+        ]
+      },
+      "creatures": [
+        "kite hawks"
+      ],
+      "audio_motif": "Tabla-infused electronic beats with crowd chants and percussive pulses",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Boost along suspended bazaar decks",
+          "Leap through layered balconies as merchants scatter",
+          "Slide beneath closing vendor shutters"
+        ]
+      },
+      "sora_tokens": [
+        "jackson heights bazaar",
+        "floating market chase",
+        "masked trader sprint"
+      ],
+      "street_essence": "A vertical market labyrinth where traders and drones weave dense obstacle courses.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "bronx_south_bronx",
+      "name": "South Bronx Rail Forge",
+      "borough": "Bronx",
+      "district": "South Bronx",
+      "neighborhood": "South Bronx",
+      "primary_use": "industrial",
+      "adjacent": [
+        "manhattan_harlem",
+        "queens_astoria",
+        "bronx_fordham",
+        "bronx_hunts_point"
+      ],
+      "landmarks": [
+        "elevated rail jungles",
+        "holographic scrapyards"
+      ],
+      "visuals": {
+        "palette": [
+          "charcoal",
+          "electric lime",
+          "amber"
+        ],
+        "lighting": "Forge fires light the rail overpasses as trains carry scrap mechs",
+        "architecture": [
+          "rail yards",
+          "scrap foundries"
+        ],
+        "set_dressing": [
+          "molten slag",
+          "spray sparks"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "rail warden mechs"
+        ],
+        "inhabitants": [
+          "scrap artisans"
+        ],
+        "hazards": [
+          "magnetized rail traps",
+          "metal shard gusts"
+        ]
+      },
+      "creatures": [
+        "steel hyenas"
+      ],
+      "audio_motif": "Industrial hip-hop rhythms with pounding bass and anvil strikes",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Ride hoverbike along elevated rails",
+          "Vault between freight cars mid-motion",
+          "Slide beneath slag waterfalls"
+        ]
+      },
+      "sora_tokens": [
+        "south bronx rail forge",
+        "scrapyard sprint",
+        "masked rail rider"
+      ],
+      "street_essence": "Rail yards retooled into weapon forges, guarded by mech wardens and scrap artisans.",
+      "audio_intensity": 9
+    },
+    {
+      "id": "bronx_fordham",
+      "name": "Fordham Archive Bastion",
+      "borough": "Bronx",
+      "district": "Fordham",
+      "neighborhood": "Fordham",
+      "primary_use": "academic",
+      "adjacent": [
+        "bronx_south_bronx",
+        "manhattan_washington_heights",
+        "manhattan_inwood_cliffs"
+      ],
+      "landmarks": [
+        "stone libraries",
+        "holographic lecture quads"
+      ],
+      "visuals": {
+        "palette": [
+          "slate",
+          "emerald",
+          "gold"
+        ],
+        "lighting": "Holographic manuscripts cascade across fortified quads",
+        "architecture": [
+          "gothic halls",
+          "data towers"
+        ],
+        "set_dressing": [
+          "defense scriptures",
+          "shield panels"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "archive paladins"
+        ],
+        "inhabitants": [
+          "student scribes"
+        ],
+        "hazards": [
+          "knowledge vault locks",
+          "ink mist clouds"
+        ]
+      },
+      "creatures": [
+        "owl sentries"
+      ],
+      "audio_motif": "Majestic orchestral swells with booming taiko drums",
+      "movement": {
+        "preferred_tech": [
+          "parkour_gear",
+          "grappling_hook"
+        ],
+        "traversal_calls": [
+          "Wall-run along fortified scriptures",
+          "Grapple up clock towers to escape paladins",
+          "Slide under descending archive gates"
+        ]
+      },
+      "sora_tokens": [
+        "fordham archive bastion",
+        "library fortress chase",
+        "masked archivist sprint"
+      ],
+      "street_essence": "Scholars defend data relics with ornate wards; knowledge vaults shift like puzzles.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "bronx_hunts_point",
+      "name": "Hunts Point Bioport",
+      "borough": "Bronx",
+      "district": "Hunts Point",
+      "neighborhood": "Hunts Point",
+      "primary_use": "dockyard",
+      "adjacent": [
+        "bronx_south_bronx",
+        "queens_astoria",
+        "manhattan_battery_park"
+      ],
+      "landmarks": [
+        "biofuel docks",
+        "aquaponic silos"
+      ],
+      "visuals": {
+        "palette": [
+          "teal",
+          "rust",
+          "sunset orange"
+        ],
+        "lighting": "Chemical flares and hydroponic glow mix along the waterfront",
+        "architecture": [
+          "processing plants",
+          "cooling towers"
+        ],
+        "set_dressing": [
+          "bioluminescent vapor",
+          "coolant plumes"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "biohazard enforcers"
+        ],
+        "inhabitants": [
+          "marshland harvesters"
+        ],
+        "hazards": [
+          "acid spray",
+          "slippery algae decks"
+        ]
+      },
+      "creatures": [
+        "mutated eels"
+      ],
+      "audio_motif": "Bass-heavy beats with bubbling synths and steam blasts",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Skim hoverbike across slick docklines",
+          "Jetpack through vertical aquaponic frames",
+          "Leap between tanker pipes"
+        ]
+      },
+      "sora_tokens": [
+        "hunts point bioport",
+        "aquaponic dash",
+        "masked harvester run"
+      ],
+      "street_essence": "Waterfront processors mix toxins and nutrients; hazards erupt without warning.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "staten_st_george",
+      "name": "St. George Signal Pier",
+      "borough": "Staten Island",
+      "district": "St. George",
+      "neighborhood": "St. George",
+      "primary_use": "transport",
+      "adjacent": [
+        "manhattan_battery_park",
+        "staten_stapleton"
+      ],
+      "landmarks": [
+        "ferry terminals",
+        "harbor lighthouse"
+      ],
+      "visuals": {
+        "palette": [
+          "sea blue",
+          "amber",
+          "fog gray"
+        ],
+        "lighting": "Harbor fog flashes with guidance lasers",
+        "architecture": [
+          "ferry slips",
+          "steel piers"
+        ],
+        "set_dressing": [
+          "signal buoys",
+          "flooded concourses"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "harbor sentinel drones"
+        ],
+        "inhabitants": [
+          "ferry captains"
+        ],
+        "hazards": [
+          "portcullis drops",
+          "surge tidal waves"
+        ]
+      },
+      "creatures": [
+        "sonar gulls"
+      ],
+      "audio_motif": "Nautical drums with sonar pings and rising synth swells",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "jetpack"
+        ],
+        "traversal_calls": [
+          "Dash hoverbike along slick pier rails",
+          "Jetpack over ferry decks during tidal surges",
+          "Slide under spooling cargo cranes"
+        ]
+      },
+      "sora_tokens": [
+        "st george signal pier",
+        "harbor sprint",
+        "masked pilot run"
+      ],
+      "street_essence": "The harbor gateway glows with navigation lasers while sentry drones guard escape routes.",
+      "audio_intensity": 8
+    },
+    {
+      "id": "staten_stapleton",
+      "name": "Stapleton Drydock Ascent",
+      "borough": "Staten Island",
+      "district": "Stapleton",
+      "neighborhood": "Stapleton",
+      "primary_use": "dockyard",
+      "adjacent": [
+        "staten_st_george",
+        "brooklyn_red_hook"
+      ],
+      "landmarks": [
+        "dry dock caverns",
+        "shipyard cranes"
+      ],
+      "visuals": {
+        "palette": [
+          "rust",
+          "navy",
+          "amber"
+        ],
+        "lighting": "Dry dock caverns echo with refit mechs and welding flares",
+        "architecture": [
+          "submerged ship hulls",
+          "repair gantries"
+        ],
+        "set_dressing": [
+          "sparking welders",
+          "steam veils"
+        ]
+      },
+      "ecosystem": {
+        "adversaries": [
+          "dockbreaker mechs"
+        ],
+        "inhabitants": [
+          "refit crews"
+        ],
+        "hazards": [
+          "crane swing traps",
+          "steam burst gauntlets"
+        ]
+      },
+      "creatures": [
+        "oil slick seals"
+      ],
+      "audio_motif": "Grinding industrial beats with hammer strikes and ship horn blasts",
+      "movement": {
+        "preferred_tech": [
+          "agile_hoverbike",
+          "parkour_gear"
+        ],
+        "traversal_calls": [
+          "Race hoverbike up drydock ramps",
+          "Vault between crane arms",
+          "Slide under lowering ship hull plates"
+        ]
+      },
+      "sora_tokens": [
+        "stapleton drydock dash",
+        "shipyard sprint",
+        "masked dock runner"
+      ],
+      "street_essence": "Shipyards now reforge war machines; dry docks become vertical gauntlets.",
+      "audio_intensity": 9
+    }
+  ],
+  "defaults": {
+    "audio_intensity_min": 8,
+    "audio_intensity_max": 10,
+    "faces_policy": "All figures keep faces obscured via hoods, masks, or deep shadow in every shot.",
+    "movement_blocks_min": 1,
+    "movement_blocks_max": 3
+  }
+}

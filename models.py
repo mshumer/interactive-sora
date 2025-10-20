@@ -53,6 +53,7 @@ class Scene(Base):
     failure_detail = Column(Text, nullable=True)
     contributor_hash = Column(String(256), nullable=True)
     started_at = Column(DateTime(timezone=True), nullable=True)
+    state_json = Column(JSON_TYPE, nullable=True)
     state_summary = Column(Text, nullable=True)
     progress = Column(Integer, nullable=True)
     progress_updated_at = Column(DateTime(timezone=True), nullable=True)
