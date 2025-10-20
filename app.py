@@ -129,6 +129,21 @@ FRAME_DIR = Path("veo_cyoa_frames")
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def _ensure_genai_available() -> None:
+    if genai is None or genai_types is None:
+        raise RuntimeError(
+            "google-genai package is required for Veo integration. Install it with 'pip install google-genai'."
+        )
+
+
+def _build_genai_client(api_key: str):
+    _ensure_genai_available()
+    if not api_key:
+        raise RuntimeError("Gemini API key is required")
+    return genai.Client(api_key=api_key)
+
+
 storage_client = build_storage_client()
 logger = logging.getLogger("veo_shared_world")
 if not logger.handlers:
@@ -884,7 +899,7 @@ def render_scene_video(
                 path or "root",
                 bool(parent_context_path),
             )
-            operation = veo_create_video(
+            client, operation, uploaded_context = veo_create_video(
                 api_key=api_key,
                 veo_prompt=veo_prompt,
                 model=VEO_MODEL,
@@ -892,10 +907,13 @@ def render_scene_video(
                 seconds=DEFAULT_SECONDS,
                 reference_video_path=parent_context_path,
             )
-            _update_scene_progress(world_id, path, (operation.get("metadata") or {}).get("progressPercent"))
+
+            initial_meta = getattr(operation, "metadata", None)
+            if isinstance(initial_meta, dict):
+                _update_scene_progress(world_id, path, initial_meta.get("progressPercent"))
 
             operation = veo_poll_until_complete(
-                api_key,
+                client,
                 operation,
                 cancel_event,
                 progress_callback=lambda prog: _update_scene_progress(world_id, path, prog),
@@ -926,6 +944,13 @@ def render_scene_video(
     finally:
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
+        try:
+            if 'uploaded_context' in locals() and uploaded_context is not None:
+                client = locals().get('client')
+                if client is not None:
+                    client.files.delete(uploaded_context.name)
+        except Exception:
+            logger.debug("[veo] context file deletion skipped", exc_info=True)
 
 
 def download_asset(stored_value: str, variant: str) -> Optional[Path]:
@@ -1354,23 +1379,17 @@ Return JSON with keys: scenario_display, veo_prompt, choices (3), choices_short 
 # === Veo Helpers ===
 
 
-def _veo_headers(api_key: str) -> Dict[str, str]:
-    if not api_key:
-        raise RuntimeError("Gemini API key is required")
-    return {
-        "x-goog-api-key": api_key,
-        "Content-Type": "application/json",
-    }
-
-
-def _encode_inline_video(path: Path) -> Dict[str, Any]:
-    data = base64.b64encode(path.read_bytes()).decode("utf-8")
-    return {
-        "inlineData": {
-            "mimeType": "video/mp4",
-            "data": data,
-        }
-    }
+def _upload_context_video(client, reference_video_path: Optional[Path]):
+    if reference_video_path is None or not reference_video_path.exists():
+        return None
+    try:
+        upload = client.files.upload(
+            file=str(reference_video_path),
+            config=genai_types.UploadFileConfig(mime_type="video/mp4"),
+        )
+        return upload
+    except Exception as exc:  # pragma: no cover - upstream errors propagate
+        raise RuntimeError(f"Failed to upload context video to Gemini: {exc}") from exc
 
 
 def veo_create_video(
@@ -1380,41 +1399,37 @@ def veo_create_video(
     aspect_ratio: str,
     seconds: int,
     reference_video_path: Optional[Path] = None,
-) -> dict:
-    url = f"{GEMINI_API_BASE}/models/{model}:predictLongRunning"
-    instance: Dict[str, Any] = {"prompt": veo_prompt}
-    if reference_video_path and reference_video_path.exists():
-        instance["video"] = _encode_inline_video(reference_video_path)
+):
+    client = _build_genai_client(api_key)
+    upload = _upload_context_video(client, reference_video_path)
 
-    payload: Dict[str, Any] = {
-        "instances": [instance],
-        "parameters": {
-            "durationSeconds": seconds,
-            "aspectRatio": aspect_ratio,
-        },
-    }
+    video_arg = None
+    if upload is not None:
+        video_arg = genai_types.Video(uri=upload.name)
 
-    response = requests.post(url, headers=_veo_headers(api_key), json=payload, timeout=600)
-    if response.status_code >= 400:
-        raise RuntimeError(f"Veo create failed ({response.status_code}): {response.text}")
-    return response.json()
+    try:
+        operation = client.models.generate_videos(
+            model=model,
+            prompt=veo_prompt,
+            video=video_arg,
+            config=genai_types.GenerateVideosConfig(
+                duration_seconds=seconds,
+                aspect_ratio=aspect_ratio,
+            ),
+        )
+    except Exception as exc:  # pragma: no cover - upstream errors propagate
+        raise RuntimeError(f"Veo create failed: {exc}") from exc
 
-
-def veo_get_operation(api_key: str, name: str) -> dict:
-    url = f"{GEMINI_API_BASE}/{name}"
-    response = requests.get(url, headers=_veo_headers(api_key), timeout=120)
-    if response.status_code >= 400:
-        raise RuntimeError(f"Veo retrieve failed ({response.status_code}): {response.text}")
-    return response.json()
+    return client, operation, upload
 
 
 def veo_poll_until_complete(
-    api_key: str,
-    operation: dict,
+    client,
+    operation,
     cancel_event: threading.Event,
     progress_callback: Optional[Callable[[Optional[int]], None]] = None,
-) -> dict:
-    if not operation.get("name"):
+):
+    if not getattr(operation, "name", None):
         raise RuntimeError("Veo response missing operation name")
 
     def _progress(meta: Optional[dict]) -> Optional[int]:
@@ -1423,49 +1438,66 @@ def veo_poll_until_complete(
         return meta.get("progressPercent")
 
     if progress_callback:
-        progress_callback(_progress(operation.get("metadata")))
+        progress_callback(_progress(getattr(operation, "metadata", None)))
 
-    while not operation.get("done"):
+    current = operation
+    while not getattr(current, "done", False):
         if cancel_event.is_set():
             raise SceneCancelled()
         time.sleep(3)
-        operation = veo_get_operation(api_key, operation["name"])
+        current = client.operations.get(current.name)
         if progress_callback:
-            progress_callback(_progress(operation.get("metadata")))
+            progress_callback(_progress(getattr(current, "metadata", None)))
 
-    if operation.get("error"):
-        message = operation["error"].get("message") if isinstance(operation.get("error"), dict) else str(operation.get("error"))
+    if getattr(current, "error", None):
+        error_obj = current.error
+        message = getattr(error_obj, "get", lambda k, default=None: None)("message") if isinstance(error_obj, dict) else getattr(error_obj, "message", None)
         raise RuntimeError(message or "Veo generation failed")
 
-    return operation
+    if not getattr(current, "result", None):
+        raise RuntimeError("Veo generation completed without a result payload")
+
+    return current
 
 
-def _extract_generated_sample(operation: dict) -> dict:
-    response = operation.get("response") or {}
-    video_response = response.get("generateVideoResponse") or {}
-    samples = video_response.get("generatedSamples") or []
-    if not samples:
+def _extract_generated_sample(operation) -> Any:
+    result = getattr(operation, "result", None)
+    if not result or not getattr(result, "generated_videos", None):
         raise RuntimeError("Veo generation returned no samples")
-    return samples[0]
+    return result.generated_videos[0]
 
 
-def veo_download_content(api_key: str, sample: dict, out_path: Path) -> Path:
-    video_node = (sample.get("_self") or {}).get("video") or {}
-    uri = video_node.get("uri")
-    if not uri:
-        encoded = video_node.get("encodedVideo")
-        if encoded:
-            out_path.write_bytes(base64.b64decode(encoded))
-            return out_path
-        raise RuntimeError("Veo sample missing download URI")
+def veo_download_content(api_key: str, sample: Any, out_path: Path) -> Path:
+    video_node = getattr(sample, "video", None)
+    if video_node is None and isinstance(sample, dict):
+        video_node = sample.get("video")
+    if video_node is None:
+        raise RuntimeError("Veo sample missing video payload")
 
-    with requests.get(uri, headers={"x-goog-api-key": api_key}, stream=True, timeout=1800) as response:
-        if response.status_code >= 400:
-            raise RuntimeError(f"Veo download failed ({response.status_code}): {response.text}")
-        with out_path.open("wb") as fh:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    fh.write(chunk)
+    uri = getattr(video_node, "uri", None)
+    if uri is None and isinstance(video_node, dict):
+        uri = video_node.get("uri")
+
+    if uri:
+        with requests.get(uri, headers={"x-goog-api-key": api_key}, stream=True, timeout=1800) as response:
+            if response.status_code >= 400:
+                raise RuntimeError(f"Veo download failed ({response.status_code}): {response.text}")
+            with out_path.open("wb") as fh:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        fh.write(chunk)
+        return out_path
+
+    video_bytes = getattr(video_node, "video_bytes", None)
+    if video_bytes is None and isinstance(video_node, dict):
+        video_bytes = video_node.get("encodedVideo") or video_node.get("videoBytes")
+        if isinstance(video_bytes, str):
+            video_bytes = base64.b64decode(video_bytes)
+
+    if not video_bytes:
+        raise RuntimeError("Veo sample missing downloadable content")
+
+    out_path.write_bytes(video_bytes if isinstance(video_bytes, (bytes, bytearray)) else bytes(video_bytes))
     return out_path
 
 
@@ -1542,7 +1574,8 @@ def generate_scene_video(
     context_video: Optional[Path],
 ) -> Tuple[str, Path, Path, Path]:
     seconds = normalize_seconds(seconds)
-    operation = veo_create_video(
+
+    client, operation, uploaded_context = veo_create_video(
         api_key=api_key,
         veo_prompt=veo_prompt,
         model=model,
@@ -1550,7 +1583,7 @@ def generate_scene_video(
         seconds=seconds,
         reference_video_path=context_video,
     )
-    operation = veo_poll_until_complete(api_key, operation, threading.Event())
+    operation = veo_poll_until_complete(client, operation, threading.Event())
     sample = _extract_generated_sample(operation)
 
     token = uuid.uuid4().hex
@@ -1566,7 +1599,15 @@ def generate_scene_video(
     poster_path = FRAME_DIR / f"{token}_last.jpg"
     extract_last_frame(combined_path, poster_path)
 
-    return operation.get("name", token), clip_path, poster_path, combined_path
+    operation_name = getattr(operation, "name", None) or token
+
+    try:
+        if uploaded_context is not None:
+            client.files.delete(uploaded_context.name)
+    except Exception:
+        logger.debug("[veo] preset context file deletion skipped", exc_info=True)
+
+    return operation_name, clip_path, poster_path, combined_path
 
 
 if __name__ == "__main__":
