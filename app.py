@@ -100,7 +100,7 @@ DEFAULT_WORLD_BASE_PROMPT = (
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
 PLANNER_MODEL = os.environ.get("PLANNER_MODEL", "gpt-5")
-VEO_MODEL = os.environ.get("VEO_MODEL", "veo-3.1-generate-preview")
+VEO_MODEL = os.environ.get("VEO_MODEL", "veo-3.1-fast-generate-preview")
 VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1280x720")
 VEO_ASPECT_RATIO = _compute_aspect_ratio(VIDEO_SIZE)
 SCENE_TIMEOUT_SECONDS = int(os.environ.get("SCENE_TIMEOUT_SECONDS", "900"))
