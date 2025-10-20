@@ -156,7 +156,9 @@ def _resolve_file_download_uri(file_obj: Any) -> str:
     name = getattr(file_obj, "name", None)
     if isinstance(name, str) and name.startswith("files/"):
         base = GEMINI_API_BASE.rstrip("/")
-        return f"{base}/{name}:download?alt=media"
+        uri = f"{base}/{name}:download?alt=media"
+        logger.debug("[veo] constructed download uri=%s", uri)
+        return uri
     raise RuntimeError("Gemini file upload missing download URI")
 
 
@@ -901,6 +903,9 @@ def render_scene_video(
             logger.warning("[continuity] missing parent scene world=%s parent_path=%s", world_id, parent)
 
     if parent_context_seconds and parent_context_seconds > 141:
+        logger.error(
+            "[veo] context length exceeded limit seconds=%s path=%s", parent_context_seconds, path
+        )
         raise RuntimeError(
             "Parent context video exceeds Veo's 141-second extension limit. Restart from an earlier branch."
         )
@@ -956,6 +961,13 @@ def render_scene_video(
                 key_prefix=key_prefix,
                 context_video_path=combined_path,
             )
+            logger.info(
+                "[veo] uploaded asset key_prefix=%s video=%s poster=%s context=%s",
+                key_prefix,
+                asset.video_url,
+                asset.poster_url,
+                asset.context_video_url,
+            )
             return asset
     finally:
         if parent_context_path and parent_context_path.exists():
@@ -964,6 +976,7 @@ def render_scene_video(
             if 'uploaded_context_name' in locals() and uploaded_context_name is not None:
                 client = locals().get('client')
                 if client is not None:
+                    logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
                     client.files.delete(name=uploaded_context_name)
         except Exception:
             logger.debug("[veo] context file deletion skipped", exc_info=True)
@@ -1490,6 +1503,12 @@ def veo_poll_until_complete(
     if progress_callback:
         progress_callback(_progress(getattr(operation, "metadata", None)))
 
+    logger.debug(
+        "[veo] entering poll loop operation=%s done=%s",
+        getattr(operation, "name", None),
+        getattr(operation, "done", None),
+    )
+
     current = operation
     while not getattr(current, "done", False):
         if cancel_event.is_set():
@@ -1535,6 +1554,7 @@ def veo_download_content(api_key: str, sample: Any, out_path: Path) -> Path:
         uri = video_node.get("uri")
 
     if uri:
+        logger.debug("[veo] downloading video content from uri=%s", uri)
         with requests.get(uri, headers={"x-goog-api-key": api_key}, stream=True, timeout=1800) as response:
             if response.status_code >= 400:
                 raise RuntimeError(f"Veo download failed ({response.status_code}): {response.text}")
@@ -1554,6 +1574,7 @@ def veo_download_content(api_key: str, sample: Any, out_path: Path) -> Path:
         raise RuntimeError("Veo sample missing downloadable content")
 
     out_path.write_bytes(video_bytes if isinstance(video_bytes, (bytes, bytearray)) else bytes(video_bytes))
+    logger.debug("[veo] wrote inline video bytes to %s (%s bytes)", out_path, out_path.stat().st_size)
     return out_path
 
 
@@ -1670,10 +1691,18 @@ def generate_scene_video(
 
     try:
         if uploaded_context_name is not None:
+            logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
             client.files.delete(name=uploaded_context_name)
     except Exception:
         logger.debug("[veo] preset context file deletion skipped", exc_info=True)
 
+    logger.info(
+        "[veo] prepared outputs operation=%s clip=%s poster=%s combined=%s",
+        operation_name,
+        clip_path,
+        poster_path,
+        combined_path,
+    )
     return operation_name, clip_path, poster_path, combined_path
 
 
