@@ -100,6 +100,8 @@ FRAME_DIR = Path("sora_cyoa_frames")
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
 
+ROOT_REFERENCE_IMAGE = Path("data/source_image.png")
+
 storage_client = build_storage_client()
 logger = logging.getLogger("sora_shared_world")
 if not logger.handlers:
@@ -850,7 +852,8 @@ def render_scene_video(
     cancel_event: threading.Event,
 ) -> StoredAsset:
     video_id, video_path = None, None
-    parent_last_frame: Optional[Path] = None
+    reference_path: Optional[Path] = None
+    cleanup_reference: Optional[Path] = None
     parent = parent_path(path)
     if parent is not None:
         with session_scope() as session:
@@ -871,14 +874,22 @@ def render_scene_video(
             logger.info("[continuity] download path=%s type=%s exists=%s", parent_last_frame, type(parent_last_frame), parent_last_frame.exists() if isinstance(parent_last_frame, Path) else None)
             if isinstance(parent_last_frame, Path) and parent_last_frame.exists():
                 logger.info("[continuity] last frame ready at %s", parent_last_frame)
+                reference_path = parent_last_frame
+                cleanup_reference = parent_last_frame
             else:
                 logger.warning("[continuity] failed to obtain last frame for world=%s path=%s", world_id, path or "root")
+    else:
+        if ROOT_REFERENCE_IMAGE.exists():
+            reference_path = ROOT_REFERENCE_IMAGE
+            logger.info("[continuity] using root reference image %s", ROOT_REFERENCE_IMAGE)
+        else:
+            logger.warning("[continuity] root reference image missing at %s", ROOT_REFERENCE_IMAGE)
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = Path(tmp_dir)
-            if parent_last_frame:
-                logger.info("[continuity] sending input_reference=%s", parent_last_frame)
+            if reference_path:
+                logger.info("[continuity] sending input_reference=%s", reference_path)
             else:
                 logger.info("[continuity] no input_reference available for world=%s path=%s", world_id, path or "root")
             video_job = sora_create_video(
@@ -887,7 +898,7 @@ def render_scene_video(
                 model=SORA_MODEL,
                 size=VIDEO_SIZE,
                 seconds=DEFAULT_SECONDS,
-                input_reference_path=parent_last_frame,
+                input_reference_path=reference_path,
             )
             _update_scene_progress(world_id, path, video_job.get("progress"))
             video = sora_poll_until_complete(
@@ -909,8 +920,8 @@ def render_scene_video(
             asset = storage_client.upload(video_file, frame_file, key_prefix=key_prefix)
             return asset
     finally:
-        if parent_last_frame and parent_last_frame.exists():
-            parent_last_frame.unlink(missing_ok=True)
+        if cleanup_reference and cleanup_reference.exists():
+            cleanup_reference.unlink(missing_ok=True)
 
 
 def download_asset(stored_value: str, variant: str) -> Optional[Path]:

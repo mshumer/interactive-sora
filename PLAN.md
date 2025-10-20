@@ -123,6 +123,12 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
   - Deliverables: Updated base prompt/guidance, planner instructions, state schema defaults, and choice language to support branchable rail routes with exploratory beats.
   - Dependencies: Steps 5–14.
 
+- [x] 16) Seed Root Tram Shot With Reference Image
+  - Context: Need consistent starting visuals.
+  - Goals: Feed `/Users/mattshumer/Downloads/Sora Control/data/source_image.png` as the input reference for the root generation.
+  - Deliverables: Backend logic pointing the root scene to the reference image (without deleting it).
+  - Dependencies: Steps 5–15.
+
 - [ ] 15) Transition to First-Person Skytram Exploration
   - Context: High-speed bikes and grapples remain unstable; need traversal that plays to model strengths.
   - Goals: Shift traversal to a stabilized first-person mag-rail tram focused on exploration, low obstacles, and skyline vistas; update prompts, guidance, and state defaults.
@@ -196,3 +202,6 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
 
 ### Step 15 Notes
 - 2025-10-20: Converted traversal to first-person skytram exploration with branching rail choices, refreshed base prompt/guidance, planner rules, state defaults, and documentation to emphasize photoreal sightseeing over combat.
+
+### Step 16 Notes
+- 2025-10-20: Wired the root scene to preload `data/source_image.png` as the Sora input reference, ensuring the opening shot starts from a consistent visual baseline without altering the source file.
