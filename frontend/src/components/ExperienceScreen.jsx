@@ -14,7 +14,7 @@ const ExperienceScreen = ({
   onKeySubmit,
   onKeyCancel,
 }) => {
-  const { story, worldInfo, apiKey, prefetchedVideos, hasSavedProgress } = context;
+  const { story, worldInfo, plannerApiKey, videoApiKey, prefetchedVideos, hasSavedProgress } = context;
   const [activeIndex, setActiveIndex] = useState(Math.max(story.length - 1, 0));
   const [hasVideoEnded, setHasVideoEnded] = useState(false);
   const [showStoryboard, setShowStoryboard] = useState(false);
@@ -297,7 +297,7 @@ const ExperienceScreen = ({
             Storyboard
           </button>
           <button type="button" className="control-button" onClick={() => onPromptForKey(undefined)}>
-            {apiKey ? "Update API Key" : "Add API Key"}
+            {videoApiKey ? "Update API Keys" : "Add API Keys"}
           </button>
           <button
             type="button"
@@ -332,7 +332,7 @@ const ExperienceScreen = ({
                   .padStart(2, "0")}</p>
               )}
               <div className="start-screen__chips">
-                <span className="start-chip">Dynamic Sora Scenes</span>
+                <span className="start-chip">Dynamic Veo Scenes</span>
                 <span className="start-chip">Branching Story Paths</span>
                 <span className="start-chip">Your Decisions Matter</span>
               </div>
@@ -403,8 +403,9 @@ const ExperienceScreen = ({
       </div>
 
       {showKeyModal && (
-        <ApiKeyModal
-          initialValue={apiKey}
+        <ApiKeysModal
+          initialPlanner={plannerApiKey}
+          initialVideo={videoApiKey}
           onSubmit={onKeySubmit}
           onCancel={onKeyCancel}
         />
@@ -435,50 +436,72 @@ const ProgressBar = ({ progress }) => {
   );
 };
 
-const ApiKeyModal = ({ initialValue, onSubmit, onCancel }) => {
-  const [value, setValue] = useState(initialValue || "");
-  const [revealed, setRevealed] = useState(false);
+const ApiKeysModal = ({ initialPlanner, initialVideo, onSubmit, onCancel }) => {
+  const [planner, setPlanner] = useState(initialPlanner || "");
+  const [video, setVideo] = useState(initialVideo || "");
+  const [showPlanner, setShowPlanner] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!value.trim()) return;
-    onSubmit(value.trim());
+    if (!video.trim()) return;
+    onSubmit({ planner, video });
   };
 
   return (
     <div className="key-modal-backdrop">
       <div className="key-modal">
-        <h3>Provide your OpenAI API key</h3>
+        <h3>Provide your API keys</h3>
         <p>
-          We only use this key if the next branch has never been generated. It never leaves your
-          browser storage.
+          Keys stay in your browser. We use the Gemini key for Veo renders and the OpenAI key for
+          planning and summaries.
         </p>
         <form onSubmit={handleSubmit}>
           <label>
-            <span>API Key</span>
+            <span>Gemini API key (Veo)</span>
             <div className="key-input-row">
               <input
-                type={revealed ? "text" : "password"}
-                value={value}
-                onChange={(event) => setValue(event.target.value)}
-                placeholder="sk-..."
+                type={showVideo ? "text" : "password"}
+                value={video}
+                onChange={(event) => setVideo(event.target.value)}
+                placeholder="AIza..."
                 autoFocus
               />
               <button
                 type="button"
                 className="reveal-toggle"
-                onClick={() => setRevealed((prev) => !prev)}
+                onClick={() => setShowVideo((prev) => !prev)}
               >
-                {revealed ? "Hide" : "Show"}
+                {showVideo ? "Hide" : "Show"}
               </button>
             </div>
           </label>
+
+          <label>
+            <span>Planner API key (OpenAI)</span>
+            <div className="key-input-row">
+              <input
+                type={showPlanner ? "text" : "password"}
+                value={planner}
+                onChange={(event) => setPlanner(event.target.value)}
+                placeholder="sk-..."
+              />
+              <button
+                type="button"
+                className="reveal-toggle"
+                onClick={() => setShowPlanner((prev) => !prev)}
+              >
+                {showPlanner ? "Hide" : "Show"}
+              </button>
+            </div>
+          </label>
+
           <div className="key-actions">
             <button type="button" className="ghost" onClick={onCancel}>
               Cancel
             </button>
-            <button type="submit" className="primary" disabled={!value.trim()}>
-              Save Key
+            <button type="submit" className="primary" disabled={!video.trim()}>
+              Save Keys
             </button>
           </div>
         </form>

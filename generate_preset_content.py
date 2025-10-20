@@ -1,7 +1,7 @@
 """Utility script to pre-generate cinematic starter trees for the three default presets.
 
 Usage:
-    OPENAI_API_KEY=sk-... python generate_preset_content.py
+    PLANNER_API_KEY=sk-... GEMINI_API_KEY=... python generate_preset_content.py
 
 The script will create a directory `prebaked_content/<preset_slug>/` containing:
     - mp4 videos for depth-0 to depth-2 scenes (13 clips per preset)
@@ -13,6 +13,7 @@ It reuses the helper functions from app.py to stay consistent with runtime logic
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import sys
@@ -20,7 +21,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from app import DEFAULT_SECONDS, generate_scene_video, plan_initial_scene, plan_next_scene  # type: ignore
+from app import (
+    DEFAULT_SECONDS,
+    VEO_ASPECT_RATIO,
+    VEO_MODEL,
+    generate_scene_video,
+    plan_initial_scene,
+    plan_next_scene,
+)  # type: ignore
 
 try:
     from tqdm import tqdm  # type: ignore
@@ -36,7 +44,7 @@ class SceneNode:
     path: List[int]
     trigger_choice: Optional[str]
     scenario_display: str
-    sora_prompt: str
+    veo_prompt: str
     choices: List[str]
     choices_short: List[str]
     video_relpath: Optional[str]
@@ -48,7 +56,7 @@ class SceneNode:
             "path": self.path,
             "triggerChoice": self.trigger_choice,
             "scenarioDisplay": self.scenario_display,
-            "soraPrompt": self.sora_prompt,
+            "veoPrompt": self.veo_prompt,
             "choices": self.choices,
             "choicesShort": self.choices_short,
             "video": self.video_relpath,
@@ -84,6 +92,19 @@ def slug_path(path: List[int]) -> str:
     if not path:
         return "scene_root"
     return "scene_" + "_".join(str(idx) for idx in path)
+
+
+def infer_aspect_ratio(size: str) -> str:
+    try:
+        width_str, height_str = size.lower().split("x", 1)
+        width = int(width_str.strip())
+        height = int(height_str.strip())
+        if width <= 0 or height <= 0:
+            raise ValueError
+        gcd_val = math.gcd(width, height) or 1
+        return f"{width // gcd_val}:{height // gcd_val}"
+    except Exception:
+        return VEO_ASPECT_RATIO
 
 
 def copy_assets(video_path: Path, frame_path: Path, target_dir: Path, slug: str) -> (str, str):
@@ -133,10 +154,12 @@ class ProgressHandle:
 
 
 def build_tree(
-    api_key: str,
+    planner_api_key: str,
+    video_api_key: str,
     planner_model: str,
-    sora_model: str,
-    video_size: str,
+    veo_model: str,
+    aspect_ratio: str,
+    seconds: int,
     preset_tracker: ProgressHandle,
     overall_tracker: ProgressHandle,
     preset_slug: str,
@@ -144,16 +167,16 @@ def build_tree(
     path: List[int],
     prior_prompts: List[str],
     trigger_choice: Optional[str],
-    parent_last_frame: Optional[Path],
+    parent_context_video: Optional[Path],
     depth: int,
 ) -> SceneNode:
     if depth == 0:
-        scene = plan_initial_scene(api_key=api_key, base_prompt=base_prompt, model=planner_model)
+        scene = plan_initial_scene(api_key=planner_api_key, base_prompt=base_prompt, model=planner_model)
     else:
         scene = plan_next_scene(
-            api_key=api_key,
+            api_key=planner_api_key,
             base_prompt=base_prompt,
-            prior_sora_prompts=prior_prompts,
+            prior_video_prompts=prior_prompts,
             chosen_choice=trigger_choice or "",
             state_summaries=[],
             model=planner_model,
@@ -163,21 +186,20 @@ def build_tree(
 
     video_relpath: Optional[str] = None
     poster_relpath: Optional[str] = None
-    last_frame_path: Optional[Path] = None
+    context_video_for_children: Optional[Path] = None
 
     if not scene.get("_planner_missing_prompt"):
-        video_id, video_path, frame_path = generate_scene_video(
-            api_key=api_key,
-            sora_prompt=scene["sora_prompt"],
-            model=sora_model,
-            size=video_size,
-            seconds=DEFAULT_SECONDS,
-            input_reference=parent_last_frame,
+        _, clip_path, frame_path, combined_path = generate_scene_video(
+            api_key=video_api_key,
+            veo_prompt=scene["veo_prompt"],
+            model=veo_model,
+            aspect_ratio=aspect_ratio,
+            seconds=seconds,
+            context_video=parent_context_video,
         )
-        # copy into preset directory
         preset_dir = OUTPUT_ROOT / preset_slug
-        video_relpath, poster_relpath = copy_assets(video_path, frame_path, preset_dir, node_slug)
-        last_frame_path = frame_path
+        video_relpath, poster_relpath = copy_assets(clip_path, frame_path, preset_dir, node_slug)
+        context_video_for_children = combined_path
     else:
         print(f"  ⚠️ planner missing prompt at slug={node_slug}; skipping video generation")
 
@@ -185,22 +207,24 @@ def build_tree(
         path=list(path),
         trigger_choice=trigger_choice,
         scenario_display=scene["scenario_display"],
-        sora_prompt=scene["sora_prompt"],
+        veo_prompt=scene["veo_prompt"],
         choices=scene["choices"],
         choices_short=scene["choices_short"],
         video_relpath=video_relpath,
         poster_relpath=poster_relpath,
     )
 
-    if depth < MAX_DEPTH:
-        updated_prompts = prior_prompts + [scene["sora_prompt"]]
+    if depth < MAX_DEPTH and context_video_for_children is not None:
+        updated_prompts = prior_prompts + [scene["veo_prompt"]]
         for idx, choice_text in enumerate(scene["choices"]):
             child_path = path + [idx]
             child = build_tree(
-                api_key=api_key,
+                planner_api_key=planner_api_key,
+                video_api_key=video_api_key,
                 planner_model=planner_model,
-                sora_model=sora_model,
-                video_size=video_size,
+                veo_model=veo_model,
+                aspect_ratio=aspect_ratio,
+                seconds=seconds,
                 preset_tracker=preset_tracker,
                 overall_tracker=overall_tracker,
                 preset_slug=preset_slug,
@@ -208,7 +232,7 @@ def build_tree(
                 path=child_path,
                 prior_prompts=updated_prompts,
                 trigger_choice=choice_text,
-                parent_last_frame=Path(last_frame_path) if last_frame_path else None,
+                parent_context_video=context_video_for_children,
                 depth=depth + 1,
             )
             node.children.append(child)
@@ -222,14 +246,25 @@ def build_tree(
 
 
 def main() -> None:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        print("ERROR: OPENAI_API_KEY must be set in the environment.")
+    planner_api_key = os.environ.get("PLANNER_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    video_api_key = (
+        os.environ.get("GEMINI_API_KEY")
+        or os.environ.get("VIDEO_API_KEY")
+        or planner_api_key
+    )
+
+    if not planner_api_key:
+        print("ERROR: PLANNER_API_KEY or OPENAI_API_KEY must be set in the environment.")
+        sys.exit(1)
+    if not video_api_key:
+        print("ERROR: GEMINI_API_KEY (or VIDEO_API_KEY) must be set in the environment.")
         sys.exit(1)
 
     planner_model = os.environ.get("PLANNER_MODEL", "gpt-5")
-    sora_model = os.environ.get("SORA_MODEL", "sora-2")
+    veo_model = os.environ.get("VEO_MODEL", VEO_MODEL)
     video_size = os.environ.get("VIDEO_SIZE", "1280x720")
+    aspect_ratio = infer_aspect_ratio(video_size)
+    seconds = DEFAULT_SECONDS
 
     nodes_per_preset = sum(3 ** depth for depth in range(MAX_DEPTH + 1))
     overall_tracker = ProgressHandle(total=nodes_per_preset * len(PRESETS), desc="Overall", position=0)
@@ -242,10 +277,12 @@ def main() -> None:
         preset_tracker = ProgressHandle(total=nodes_per_preset, desc=preset_slug, position=idx + 1)
 
         tree = build_tree(
-            api_key=api_key,
+            planner_api_key=planner_api_key,
+            video_api_key=video_api_key,
             planner_model=planner_model,
-            sora_model=sora_model,
-            video_size=video_size,
+            veo_model=veo_model,
+            aspect_ratio=aspect_ratio,
+            seconds=seconds,
             preset_tracker=preset_tracker,
             overall_tracker=overall_tracker,
             preset_slug=preset_slug,
@@ -253,7 +290,7 @@ def main() -> None:
             path=[],
             prior_prompts=[],
             trigger_choice=None,
-            parent_last_frame=None,
+            parent_context_video=None,
             depth=0,
         )
 
@@ -262,6 +299,8 @@ def main() -> None:
         manifest = {
             "preset": preset_slug,
             "basePrompt": base_prompt,
+            "veoModel": veo_model,
+            "aspectRatio": aspect_ratio,
             "tree": tree.to_dict(),
         }
         manifest_path = preset_dir / "manifest.json"

@@ -18,10 +18,19 @@ class StoredAsset:
     video_key: str
     poster_key: str
     bytes_written: int
+    context_video_url: Optional[str] = None
+    context_video_key: Optional[str] = None
 
 
 class StorageClient:
-    def upload(self, video_path: Path, poster_path: Path, *, key_prefix: str) -> StoredAsset:
+    def upload(
+        self,
+        video_path: Path,
+        poster_path: Path,
+        *,
+        key_prefix: str,
+        context_video_path: Optional[Path] = None,
+    ) -> StoredAsset:
         raise NotImplementedError
 
     def delete(self, key_prefix: str) -> None:
@@ -57,13 +66,27 @@ class R2StorageClient(StorageClient):
             config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
         )
 
-    def upload(self, video_path: Path, poster_path: Path, *, key_prefix: str) -> StoredAsset:
+    def upload(
+        self,
+        video_path: Path,
+        poster_path: Path,
+        *,
+        key_prefix: str,
+        context_video_path: Optional[Path] = None,
+    ) -> StoredAsset:
         video_key = f"{key_prefix}.mp4"
         poster_key = f"{key_prefix}.jpg"
         total_bytes = 0
 
         total_bytes += self._upload_file(video_path, video_key, "video/mp4")
         total_bytes += self._upload_file(poster_path, poster_key, "image/jpeg")
+
+        context_key = None
+        context_url = None
+        if context_video_path is not None and context_video_path.exists():
+            context_key = f"{key_prefix}__context.mp4"
+            total_bytes += self._upload_file(context_video_path, context_key, "video/mp4")
+            context_url = self._asset_url(context_key)
 
         video_url = self._asset_url(video_key)
         poster_url = self._asset_url(poster_key)
@@ -74,6 +97,8 @@ class R2StorageClient(StorageClient):
             video_key=video_key,
             poster_key=poster_key,
             bytes_written=total_bytes,
+            context_video_url=context_url,
+            context_video_key=context_key,
         )
 
     def _upload_file(self, path: Path, key: str, content_type: str) -> int:
@@ -88,7 +113,7 @@ class R2StorageClient(StorageClient):
         return f"https://{self._bucket}.{self._account_id}.r2.cloudflarestorage.com/{key}"
 
     def delete(self, key_prefix: str) -> None:
-        for suffix in (".mp4", ".jpg"):
+        for suffix in (".mp4", ".jpg", "__context.mp4"):
             key = f"{key_prefix}{suffix}"
             try:
                 self._s3.delete_object(Bucket=self._bucket, Key=key)
@@ -101,7 +126,7 @@ class R2StorageClient(StorageClient):
             return stored_value
 
         key = stored_value
-        if variant == "video" and not key.endswith(".mp4"):
+        if variant in {"video", "context"} and not key.endswith(".mp4"):
             key = key + (".mp4" if not key.endswith(".jpg") else "")
         if variant == "poster" and not key.lower().endswith(('.jpg', '.jpeg')):
             key = key + ".jpg"
@@ -129,13 +154,28 @@ class LocalStorageClient(StorageClient):
     def base_dir(self) -> Path:
         return self._base_dir
 
-    def upload(self, video_path: Path, poster_path: Path, *, key_prefix: str) -> StoredAsset:
+    def upload(
+        self,
+        video_path: Path,
+        poster_path: Path,
+        *,
+        key_prefix: str,
+        context_video_path: Optional[Path] = None,
+    ) -> StoredAsset:
         key_path = Path(key_prefix)
         video_target = (self._base_dir / key_path).with_suffix(".mp4")
         poster_target = (self._base_dir / key_path).with_suffix(".jpg")
         video_target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(video_path, video_target)
         shutil.copy2(poster_path, poster_target)
+
+        context_target = None
+        context_relative = None
+        if context_video_path is not None and context_video_path.exists():
+            context_target = (self._base_dir / key_path).with_name(key_path.name + "__context").with_suffix(".mp4")
+            context_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(context_video_path, context_target)
+            context_relative = key_path.with_name(key_path.name + "__context").as_posix()
 
         relative = key_path.as_posix()
         return StoredAsset(
@@ -144,10 +184,12 @@ class LocalStorageClient(StorageClient):
             video_key=relative + ".mp4",
             poster_key=relative + ".jpg",
             bytes_written=video_target.stat().st_size + poster_target.stat().st_size,
+            context_video_url=(f"/storage/{context_relative}.mp4" if context_relative else None),
+            context_video_key=(context_relative + ".mp4" if context_relative else None),
         )
 
     def delete(self, key_prefix: str) -> None:
-        for suffix in (".mp4", ".jpg"):
+        for suffix in (".mp4", ".jpg", "__context.mp4"):
             candidate = (self._base_dir / Path(key_prefix)).with_suffix(suffix)
             if candidate.exists():
                 candidate.unlink(missing_ok=True)
@@ -159,7 +201,7 @@ class LocalStorageClient(StorageClient):
             return stored_value
 
         path = stored_value
-        if variant == "video" and not path.endswith(".mp4"):
+        if variant in {"video", "context"} and not path.endswith(".mp4"):
             path = path + ".mp4"
         if variant == "poster" and not path.lower().endswith(('.jpg', '.jpeg')):
             path = path + ".jpg"

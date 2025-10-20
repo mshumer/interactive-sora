@@ -19,11 +19,15 @@ const PRESETS = [
   },
 ];
 
+const PLANNER_KEY_STORAGE = "veo_shared_world_planner_api_key";
+const VIDEO_KEY_STORAGE = "veo_shared_world_video_api_key";
+
 const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
   const [form, setForm] = useState({
-    apiKey: "",
+    plannerApiKey: "",
+    videoApiKey: "",
     plannerModel: "gpt-5",
-    soraModel: "sora-2",
+    veoModel: "veo-3.1-generate-preview",
     videoSize: "1280x720",
     basePrompt:
       "A cozy fantasy village at dusk, with glowing lanterns, narrow cobblestone streets, and a mysterious whisper about an ancient forest relic.",
@@ -31,22 +35,43 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedKey = window.localStorage.getItem("sora_cyoa_api_key");
-    if (storedKey) {
-      setForm((prev) => ({ ...prev, apiKey: storedKey }));
+    const storedPlanner =
+      window.localStorage.getItem(PLANNER_KEY_STORAGE) ||
+      window.localStorage.getItem("sora_cyoa_api_key") ||
+      "";
+    const storedVideo =
+      window.localStorage.getItem(VIDEO_KEY_STORAGE) ||
+      window.localStorage.getItem("sora_cyoa_api_key") ||
+      storedPlanner ||
+      "";
+    if (storedPlanner || storedVideo) {
+      setForm((prev) => ({
+        ...prev,
+        plannerApiKey: storedPlanner,
+        videoApiKey: storedVideo,
+      }));
     }
   }, []);
 
-  const maskedKey = useMemo(() => {
-    if (!form.apiKey) return "";
-    return form.apiKey.replace(/.(?=.{4})/g, "·");
-  }, [form.apiKey]);
+  const maskedPlanner = useMemo(() => {
+    if (!form.plannerApiKey) return "";
+    return form.plannerApiKey.replace(/.(?=.{4})/g, "·");
+  }, [form.plannerApiKey]);
+
+  const maskedVideo = useMemo(() => {
+    if (!form.videoApiKey) return "";
+    return form.videoApiKey.replace(/.(?=.{4})/g, "·");
+  }, [form.videoApiKey]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (name === "apiKey" && typeof window !== "undefined") {
-      window.localStorage.setItem("sora_cyoa_api_key", value);
+    if (typeof window === "undefined") return;
+    if (name === "plannerApiKey") {
+      window.localStorage.setItem(PLANNER_KEY_STORAGE, value);
+    }
+    if (name === "videoApiKey") {
+      window.localStorage.setItem(VIDEO_KEY_STORAGE, value);
     }
   };
 
@@ -60,7 +85,7 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
       <div className="config-backdrop" />
       <div className="config-inner">
         <section className="config-hero">
-          <p className="config-tag">Sora Control</p>
+          <p className="config-tag">Veo Control</p>
           <h1>
             Dial in your <span>story engine</span>
           </h1>
@@ -97,19 +122,36 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
 
             <form onSubmit={handleSubmit}>
               <label className="field">
-                <span>OpenAI API key</span>
+                <span>Planner API key (OpenAI Responses)</span>
                 <div className="masked">
                   <input
-                    name="apiKey"
+                    name="plannerApiKey"
                     type="password"
                     placeholder="sk-..."
-                    value={form.apiKey}
+                    value={form.plannerApiKey}
                     onChange={handleChange}
                     required
                     autoComplete="off"
                     spellCheck={false}
                   />
-                  <span className="mask-preview">{maskedKey}</span>
+                  <span className="mask-preview">{maskedPlanner}</span>
+                </div>
+              </label>
+
+              <label className="field">
+                <span>Gemini API key (Veo 3.1)</span>
+                <div className="masked">
+                  <input
+                    name="videoApiKey"
+                    type="password"
+                    placeholder="AIza..."
+                    value={form.videoApiKey}
+                    onChange={handleChange}
+                    required
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <span className="mask-preview">{maskedVideo}</span>
                 </div>
               </label>
 
@@ -125,10 +167,10 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
                   />
                 </label>
                 <label className="field">
-                  <span>Sora model</span>
-                  <select name="soraModel" value={form.soraModel} onChange={handleChange}>
-                    <option value="sora-2">sora-2</option>
-                    <option value="sora-2-pro">sora-2-pro</option>
+                  <span>Veo model</span>
+                  <select name="veoModel" value={form.veoModel} onChange={handleChange}>
+                    <option value="veo-3.1-generate-preview">veo-3.1-generate-preview</option>
+                    <option value="veo-3.1-fast-preview">veo-3.1-fast-preview</option>
                   </select>
                 </label>
                 <label className="field">

@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, scoped_session, sessionmaker
 
 
-raw_database_url = os.environ.get("DATABASE_URL", "sqlite:///./sora_world.db")
+raw_database_url = os.environ.get("DATABASE_URL", "sqlite:///./veo_world.db")
 
 # Automatically upgrade legacy PostgreSQL URLs to use the psycopg driver bundled in
 # requirements. This avoids needing the deprecated psycopg2 package at runtime.
@@ -57,6 +57,8 @@ def _ensure_schema() -> None:
         "ALTER TABLE scenes ADD COLUMN progress_updated_at TIMESTAMP",
         "ALTER TABLE scenes ADD COLUMN state_summary TEXT",
         "ALTER TABLE scenes ADD COLUMN choices_short JSON",
+        "ALTER TABLE scenes ADD COLUMN context_video_url TEXT",
+        "ALTER TABLE scenes ADD COLUMN context_video_seconds INTEGER",
     ]
     with engine.begin() as conn:
         for stmt in statements:
