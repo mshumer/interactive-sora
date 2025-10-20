@@ -83,6 +83,7 @@ DEFAULT_PROMPT_GUIDANCE = (
             "Perspective: First-person view from the hyperbike—only handlebars and the road ahead.",
             "Pace: Cover 1–3 blocks per shot; smooth acceleration, no sudden collisions, no wobble.",
             "Intersections: Highlight broad, obstacle-free avenues with multiple branch options (left/straight/right) to explore.",
+            "Branch Commitment: When a choice is taken, the next shot must already be leaning into and aligned with that avenue.",
             "Exploration: Focus on scenery, signals, residents, and ambient stories rather than combat or clutter.",
             "Photorealism: Cinematic HDR lighting, physically-based materials, volumetric depth—never stylised or toy-like.",
             "Audio: Heart-pounding score blended with engine hum, wind rush, and district ambience.",
@@ -1031,6 +1032,7 @@ Rules:
 - Perspective is first-person from the hyperbike; handlebars may edge the frame but nothing else blocks the view.
 - Photorealism is mandatory: cinematic HDR lighting, physically-based materials, crisp atmospheric depth, zero stylisation or toy-like renderings.
 - Movement must remain within 1–3 Manhattan blocks along wide, obstacle-free avenues. Only switch to an adjacent catalog area when a multi-lane intersection naturally branches there.
+- When a player choice implies turning, the next shot must already be leaning into that branch—show the handlebars angling and the skyline shifting accordingly.
 - Faces of every figure stay obscured (hoods, masks, deep shadow). Content must remain PG-13 and free of copyrighted logos/characters.
 - Maintain geography: highlight real intersections, skyline silhouettes, and landmarks sweeping past the bike.
 - Audio stays heart-pounding and continuous; blend engine hum, wind rush, and district motif.
@@ -1050,7 +1052,7 @@ Audio: <audio motif>, continuous, heart-pounding, no copyrighted music
 Photorealism: cinematic HDR, physically-based materials, realistic textures, zero stylisation
 Camera: first-person helmet/handlebar view, stabilized, gentle lean only, no collisions or jitter
 
-Prompt: <Concrete 8-second cinematic beat from the hyperbike, highlighting skyline vistas, multi-lane intersections, ambient life, and a discovery>
+Prompt: <Concrete 8-second cinematic beat from the hyperbike, beginning already in the selected avenue, highlighting skyline vistas, ambient life, and a discovery>
 
 Action Beat: <Imperative describing the climax that lands inside the 8-second window>
 
