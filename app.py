@@ -1397,14 +1397,16 @@ def _upload_context_video(client, reference_video_path: Optional[Path]):
     if reference_video_path is None or not reference_video_path.exists():
         return None
     try:
-        upload = client.files.upload(
+        record = client.files.upload(
             file=str(reference_video_path),
             config=genai_types.UploadFileConfig(mime_type="video/mp4"),
         )
-        try:
-            return client.files.get(upload.name)
-        except Exception:
-            return upload
+        if isinstance(record, str):
+            return client.files.get(record)
+        name = getattr(record, "name", None)
+        if name:
+            return client.files.get(name)
+        return record
     except Exception as exc:  # pragma: no cover - upstream errors propagate
         raise RuntimeError(f"Failed to upload context video to Gemini: {exc}") from exc
 
