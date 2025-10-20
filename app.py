@@ -84,7 +84,10 @@ DEFAULT_PROMPT_GUIDANCE = (
             "Speed: Every shot spans 1–3 Manhattan blocks; start in motion, escalate by second 3, never linger.",
             "Faces: All figures keep faces obscured with hoods, masks, or deep shadow—no exceptions.",
             "District Identity: Lean on catalog landmarks, textures, and ecosystems so each borough feels distinct and authentic.",
+            "Photorealism: Cinematic HDR lighting, physically-based materials, volumetric depth—never toy-like or stylised.",
             "Inventory: Highlight the item in use (hoverbike, jetpack, grappling hook, energy shield, AR visor) with visible action.",
+            "Camera: Steady trailing third-person behind the rider; no jitter, no sudden shake, no collisions with obstacles.",
+            "Traversal: Map clean lanes in advance—rider skims past hazards without clipping or crashing.",
             "Ecosystem: Integrate local adversaries, hazards, and mutated creatures to amplify stakes.",
             "Audio: Keep heart-pounding, continuous score matching the area’s motif; intensity stays 8–10.",
             "Hook: Finish each 8-second beat with a twist or reveal that forces an urgent next choice.",
@@ -430,6 +433,8 @@ def validate_sora_prompt_structure(prompt: str) -> Optional[str]:
         "Ecosystem:",
         "Continuity:",
         "Audio:",
+        "Photorealism:",
+        "Camera:",
         "Prompt:",
         "Action Beat:",
     ]
@@ -598,6 +603,13 @@ def _generate_scene_inner(
         missing_mentions.append("velocity_fast")
     if "obscured" not in planner_result["sora_prompt"].lower():
         missing_mentions.append("faces_obscured")
+    prompt_lower = planner_result["sora_prompt"].lower()
+    if "photoreal" not in prompt_lower:
+        missing_mentions.append("photorealism")
+    if "steady trailing" not in prompt_lower and "steady third-person" not in prompt_lower:
+        missing_mentions.append("steady_camera")
+    if "collision" not in prompt_lower and "clear lane" not in prompt_lower:
+        missing_mentions.append("collision_avoidance")
     if missing_mentions:
         _mark_failed(
             world_id,
@@ -1063,6 +1075,8 @@ Workflow:
 
 Rules:
 - Shots are photorealistic, continuous 8-second scenes. They must begin already in motion, escalate by the 3-second mark, and close on a hook that pushes the next decision.
+- Photorealism is mandatory: cinematic HDR lighting, physically-based materials, crisp atmospheric depth, zero stylisation or toy-like renderings.
+- Camera remains a steady trailing third-person rig behind the rider; pre-plan clear lanes so the rider never collides with obstacles or clips the camera.
 - Movement must remain within 1–3 Manhattan blocks consistent with movement.tech_in_use and the stated heading. Only switch to an adjacent catalog area when the traversal budget allows it.
 - Faces of every figure stay obscured (hoods, masks, deep shadow). Content must remain PG-13 and free of copyrighted logos/characters.
 - Maintain geography: reference the real street elements from the area context and state (intersections, landmarks, street textures).
@@ -1078,6 +1092,8 @@ Inventory: <item in use> (feature it visibly)
 Ecosystem: adversaries <...>; creatures <...>; hazards <...>
 Continuity: start from prior shot's final frame; keep time-of-day/weather consistent
 Audio: <audio motif>, continuous, heart-pounding, no copyrighted music
+Photorealism: cinematic HDR, physically-based materials, realistic textures, zero stylisation
+Camera: steady trailing third-person, lens-accurate, wide depth, no collisions or jitter
 
 Prompt: <Concrete 8-second cinematic beat with dynamic camera, vivid district visuals, kinetic action, and a twist>
 
@@ -1092,6 +1108,7 @@ State update:
 - Return `state_update` matching the schema (location, movement, inventory, ecosystem, audio, policy).
 - Update nearest_intersection, heading, and blocks_moved (clamp to 1–3). Change area_id only if reachable via adjacency and traversal budget.
 - Keep policy.faces_obscured true. Audio intensity stays within 8–10.
+- Confirm the lane is obstacle-free; if hazards exist, describe how the rider avoids them without collisions.
 
 Output strictly JSON:
 {

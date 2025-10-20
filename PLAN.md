@@ -1,6 +1,6 @@
 # Project Plan: Apocalyptic Cyberpunk NYC — Sora Experience
 
-**Progress Tracker:** 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 (100% complete)
+**Progress Tracker:** 🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢🟢 (100% complete)
 
 Note: As execution progresses, I will tick the checkboxes below and update the emoji tracker (⚪→🟡→🟢) to reflect real status and % complete.
 
@@ -105,6 +105,18 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
   - Deliverables: README updates or a small DEVNOTES section; this PLAN.md status updated.
   - Dependencies: Steps 2–11.
 
+- [x] 13) Reinforce Photoreal Prompting
+  - Context: Fidelity drifts toward toy-like renderings after turns.
+  - Goals: Update planner instructions/default guidance to mandate photorealistic, cinematic output with HDR lighting and material fidelity; add validation ensuring prompts include these cues.
+  - Deliverables: Adjusted planner system prompt/guidance; extended prompt validator.
+  - Dependencies: Steps 5–6.
+
+- [x] 14) Stabilize Camera & Avoid Collisions
+  - Context: Rider collisions and camera oscillations reduce visual quality.
+  - Goals: Instruct planner to maintain a steady trailing camera, plan obstacle-free paths, and ensure prompts explicitly forbid collisions; add guards verifying camera notes.
+  - Deliverables: Updated planner rules and prompt checks to enforce steady third-person framing and collision avoidance.
+  - Dependencies: Step 13.
+
 ## Dependencies Summary
 - Step 2 depends on Step 1.
 - Step 3 depends on Step 1.
@@ -163,3 +175,9 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
 
 ### Step 12 Notes
 - 2025-10-20: Refreshed README with the cyberpunk NYC narrative, catalog/state helper references, and updated frontend behaviour to describe the street tracker + inventory-driven prompts.
+
+### Step 13 Notes
+- 2025-10-20: Amplified photoreal requirements in planner rules, context block, and guidance; validator now blocks prompts lacking explicit photoreal language.
+
+### Step 14 Notes
+- 2025-10-20: Codified steady trailing camera + collision-free lanes, added guardrails to ensure prompts mention stability/avoidance, and updated guidance to keep the rider clear of obstacles.
