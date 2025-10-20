@@ -6,7 +6,7 @@
 
 **One canonical choose-your-own adventure world, expanded by the community.**
 
-The canon now lives inside an apocalyptic, cyberpunk New York City. Times Square, Harlem, SoHo, the Financial District, the bridges, and the parks still map to the real street grid—but everything is neon-drenched, overgrown, and patrolled by rogue AI. Our masked courier tears across the boroughs on hoverbikes, jetpacks, grapples, and parkour gear to reignite district beacons before militarized drones and mutated wildlife shut the city down for good. Every 8-second beat is relentless: faces stay obscured, audio slams, and the street tracker keeps the geography honest. When a branch already exists its video plays instantly; otherwise explorers can drop in an OpenAI API key to mint the clip for everyone.
+The canon now unfolds from the front of an open-air skytram gliding through an apocalyptic, cyberpunk New York City. The rail network wraps authentic streets—Times Square, Harlem, SoHo, FiDi—yet everything is neon-soaked, overgrown, and watched by rogue AI. You lean into the wind to survey districts, ignite beacon relays, and decide which branching mag-rail to follow next. Every 8-second beat is photorealistic, first-person, and jammed with discovery; faces stay obscured and the street tracker keeps geography honest. When a branch already exists its video plays instantly; otherwise explorers can drop an OpenAI API key to mint the clip for everyone.
 
 ---
 

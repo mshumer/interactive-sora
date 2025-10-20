@@ -21,10 +21,9 @@ ROOT_HEADING = "east"
 # Persistent starter inventory — always available unless explicitly dropped by
 # narrative (we keep that simple for now).
 STARTER_INVENTORY = [
-    "agile_hoverbike",
-    "energy_shield",
-    "grappling_hook",
-    "ar_visor",
+    "skytram_console",
+    "route_nav_hud",
+    "stabilizer_array",
 ]
 
 
@@ -122,19 +121,19 @@ def seed_root_state() -> Dict[str, Any]:
             "weather": "light rain and aerosol mist",
         }
     )
-    state["movement"].update({"tech_in_use": "agile_hoverbike", "velocity_tier": "fast"})
-    state["inventory"]["in_use"] = "agile_hoverbike"
+    state["movement"].update({"tech_in_use": "skytram_pod", "velocity_tier": "fast"})
+    state["inventory"]["in_use"] = "skytram_console"
     state["ecosystem"].update(
         {
-            "adversaries": ["hijacked signage drones", "riot-control mechs"],
+            "adversaries": ["rogue signage drones"],
             "creatures": [],
-            "hazards": ["electrical surges", "falling billboard panels"],
+            "hazards": ["sparking rail conduits"],
         }
     )
     state["audio"].update(
         {
-            "motif": "Stuttering synth bass with siren-tail glissandos and pounding percussion",
-            "intensity": 9,
+            "motif": "Pulsing synthwave over tram hum and distant city echoes",
+            "intensity": 8,
         }
     )
     return state
@@ -189,8 +188,8 @@ def normalize_state(raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
     movement = state["movement"]
     tech = movement.get("tech_in_use")
-    if tech not in {"agile_hoverbike", "jetpack", "grappling_hook", "parkour_gear"}:
-        movement["tech_in_use"] = "agile_hoverbike"
+    if tech not in {"skytram_pod"}:
+        movement["tech_in_use"] = "skytram_pod"
     movement["velocity_tier"] = "fast"
 
     return state

@@ -64,10 +64,9 @@ RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    "An apocalyptic, cyberpunk New York City—neon canyons, bioluminescent overgrowth, and rogue AI sentries remap every borough. "
-    "The street grid remains authentic: Times Square, Harlem, SoHo, the Financial District, the bridges, and the parks are all recognizable despite ruin. "
-    "Our masked courier must rekindle district beacons before militarized drones and mutated wildlife plunge the city into permanent blackout. "
-    "Every beat is fast, heart-pounding, and cinematic; traversal tech (hoverbikes, jetpacks, grapples, parkour) keeps momentum relentless while faces stay obscured."
+    "Experience an apocalyptic cyberpunk New York City from the front of an open-air skytram pod. "
+    "Mag-rails thread through authentic borough layouts—Times Square to Harlem to SoHo—with neon ruins, overgrown canopies, and AI sentinels flickering below. "
+    "You lean into the wind to survey districts, reactivate beacon relays, and uncover hidden enclaves. Faces stay obscured, but the city’s transformation is vivid and photorealistic."
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
@@ -81,16 +80,13 @@ CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "sora-shared-world")
 DEFAULT_PROMPT_GUIDANCE = (
     "\n".join(
         [
-            "Speed: Every shot spans 1–3 Manhattan blocks; start in motion, escalate by second 3, never linger.",
-            "Faces: All figures keep faces obscured with hoods, masks, or deep shadow—no exceptions.",
-            "District Identity: Lean on catalog landmarks, textures, and ecosystems so each borough feels distinct and authentic.",
-            "Photorealism: Cinematic HDR lighting, physically-based materials, volumetric depth—never toy-like or stylised.",
-            "Inventory: Highlight the item in use (hoverbike, jetpack, grappling hook, energy shield, AR visor) with visible action.",
-            "Camera: Steady trailing third-person behind the rider; no jitter, no sudden shake, no collisions with obstacles.",
-            "Traversal: Map clean lanes in advance—rider skims past hazards without clipping or crashing.",
-            "Ecosystem: Integrate local adversaries, hazards, and mutated creatures to amplify stakes.",
-            "Audio: Keep heart-pounding, continuous score matching the area’s motif; intensity stays 8–10.",
-            "Hook: Finish each 8-second beat with a twist or reveal that forces an urgent next choice.",
+            "Perspective: First-person view from the leading edge of an open-air skytram pod—nothing blocking the skyline.",
+            "Pace: Glide 1–3 city blocks per shot—smooth acceleration, no sudden collisions, no shakes.",
+            "Rails: Emphasize branching mag-rail junctions that let the pilot choose diverging paths through the borough.",
+            "Exploration: Showcase landmarks, inhabitants, and ambient stories rather than combat or obstacle dodging.",
+            "Photorealism: Cinematic HDR lighting, physically-based materials, volumetric depth—never stylised or toy-like.",
+            "Audio: Continuous, heart-pounding soundscape blended with wind rush, rail resonance, and district ambience.",
+            "Discovery Hook: End each beat on a compelling reveal (new vista, hidden enclave, signal spike) prompting the next choice.",
         ]
     )
 )
@@ -418,7 +414,7 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
             candidate = (scene.get("scenario_display") or "")[:160]
     candidate = candidate.strip()
     if not candidate:
-        candidate = "Trigger a dramatic cross-world portal event within 8 seconds."
+        candidate = "Unveil a breathtaking city vista as the skytram dives through the neon canyon."
     scene["sora_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
     logger.info("[prompt] appended action beat: %s", candidate)
 
@@ -793,11 +789,11 @@ def collect_state_summaries(world_id: str, path: str) -> List[str]:
 
 
 STATE_SUMMARY_SYSTEM = """
-You are the chronicler for the apocalyptic cyberpunk NYC run.
+You are the chronicler for the apocalyptic cyberpunk NYC skytram expedition.
 
 Summarise the evolving situation in at most three short bullet points.
-- Track beacon status, district control, major threats (drones, mutants, hazards), and the gear/strategy currently in play.
-- Mention location shifts or adjacency (e.g., Times Square → Bryant Park) when relevant.
+- Track which rail line the tram is on, beacon/signal progress, notable sights uncovered, and upcoming junction opportunities.
+- Mention district transitions or planned forks (e.g., diverting toward SoHo vs continuing to FiDi).
 - Keep bullets under 160 characters, starting each with "- ". No extra commentary.
 """.strip()
 
@@ -1021,7 +1017,7 @@ def _child_path(path: str, index: int) -> str:
 # === Planner Helpers ===
 
 PLANNER_SYSTEM = """
-You are the Scenario Planner for a Sora-powered, street-accurate cyberpunk New York City experience.
+You are the Scenario Planner for a Sora-powered, street-accurate cyberpunk New York City rail experience.
 
 Workflow:
 1. Read the WORLD BASE PROMPT (tone & stakes).
@@ -1032,40 +1028,41 @@ Workflow:
 
 Rules:
 - Shots are photorealistic, continuous 8-second scenes. They must begin already in motion, escalate by the 3-second mark, and close on a hook that pushes the next decision.
+- Perspective is first-person from the stabilized skytram cockpit. Keep the camera locked forward with gentle head turns—no third-person or external chase shots.
 - Photorealism is mandatory: cinematic HDR lighting, physically-based materials, crisp atmospheric depth, zero stylisation or toy-like renderings.
-- Camera remains a steady trailing third-person rig behind the rider; pre-plan clear lanes so the rider never collides with obstacles or clips the camera.
-- Movement must remain within 1–3 Manhattan blocks consistent with movement.tech_in_use and the stated heading. Only switch to an adjacent catalog area when the traversal budget allows it.
+- Movement must remain within 1–3 Manhattan blocks consistent with the rail route. Only switch to an adjacent catalog area when a junction logically branches there.
 - Faces of every figure stay obscured (hoods, masks, deep shadow). Content must remain PG-13 and free of copyrighted logos/characters.
-- Maintain geography: reference the real street elements from the area context and state (intersections, landmarks, street textures).
-- Audio stays heart-pounding and continuous; respect the area’s motif and keep intensity between 8 and 10.
-- Use the player’s inventory—showcase the item listed in state_update.inventory.in_use.
+- Maintain geography: highlight real intersections, skyline silhouettes, and landmarks as seen from elevated rails.
+- Audio stays heart-pounding and continuous; blend tram hum, HUD chimes, and district motif.
+- Inventory represents cockpit controls (navigation holomap, signal scanner, stabilizer); show their effects on the ride rather than external gear.
+- Choices must revolve around diverging rail paths (left branch to one district, right branch to another, vertical spur descending into infrastructure, etc.).
 
 Sora prompt structure (exact wording & order):
 Context (not visible in video, only for AI guidance):
 Location: <borough>, <district>/<neighborhood>, nearest <intersection>, heading <heading>, moved <blocks> blocks
 Faces: all faces obscured (hoods/masks/shadows) — mandatory
-Movement: <tech_in_use> at velocity "fast"; respect 1–3 block traversal budget
-Inventory: <item in use> (feature it visibly)
+Movement: <tech_in_use> skytram on mag-rails at velocity "fast"; respect 1–3 block traversal budget
+Inventory: <item in use> (tram interface/HUD element) and how it affects the ride
 Ecosystem: adversaries <...>; creatures <...>; hazards <...>
 Continuity: start from prior shot's final frame; keep time-of-day/weather consistent
 Audio: <audio motif>, continuous, heart-pounding, no copyrighted music
 Photorealism: cinematic HDR, physically-based materials, realistic textures, zero stylisation
-Camera: steady trailing third-person, lens-accurate, wide depth, no collisions or jitter
+Camera: first-person on open-air tram nose, stabilized gimbal, gentle roll only, no collisions or jitter
 
-Prompt: <Concrete 8-second cinematic beat with dynamic camera, vivid district visuals, kinetic action, and a twist>
+Prompt: <Concrete 8-second cinematic beat from the open-air tram nose, highlighting skyline vistas, rail forks, ambient life, and a discovery>
 
 Action Beat: <Imperative describing the climax that lands inside the 8-second window>
 
 Choices:
 - Exactly three options (≤22 words each), clearly distinct in intent and traversal.
-- Each choice must reference local landmarks, threats, or gear.
+- Each choice must be a rail decision (e.g., divert left to <landmark>, stay on mainline toward <district>, descend into maintenance tunnel near <location>). Reference landmarks or signals that justify the fork.
 - choices_short mirrors the order, ≤12 words, punchy imperative.
 
 State update:
 - Return `state_update` matching the schema (location, movement, inventory, ecosystem, audio, policy).
-- Update nearest_intersection, heading, and blocks_moved (clamp to 1–3). Change area_id only if reachable via adjacency and traversal budget.
+- Update nearest_intersection, heading, and blocks_moved (clamp to 1–3). Change area_id only if the chosen rail logically connects there.
 - Keep policy.faces_obscured true. Audio intensity stays within 8–10.
-- Confirm the lane is obstacle-free; if hazards exist, describe how the rider avoids them without collisions.
+- Emphasize exploration cues (beacons, data spikes, cultural remnants) rather than combat.
 
 Output strictly JSON:
 {

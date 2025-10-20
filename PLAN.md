@@ -117,6 +117,18 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
   - Deliverables: Updated planner rules and prompt checks to enforce steady third-person framing and collision avoidance.
   - Dependencies: Step 13.
 
+- [x] 15) Skytram Exploration Mode
+  - Context: Bikes/grapples cause instability; need a first-person rail experience with fork choices.
+  - Goals: Reframe traversal as stabilized first-person mag-tram riding, simplify hazards, and focus choices on diverging rail paths that showcase districts.
+  - Deliverables: Updated base prompt/guidance, planner instructions, state schema defaults, and choice language to support branchable rail routes with exploratory beats.
+  - Dependencies: Steps 5–14.
+
+- [ ] 15) Transition to First-Person Skytram Exploration
+  - Context: High-speed bikes and grapples remain unstable; need traversal that plays to model strengths.
+  - Goals: Shift traversal to a stabilized first-person mag-rail tram focused on exploration, low obstacles, and skyline vistas; update prompts, guidance, and state defaults.
+  - Deliverables: Revised base prompt, planner system/guidance, state inventory, and documentation reflecting the skytram exploration format.
+  - Dependencies: Steps 5–14.
+
 ## Dependencies Summary
 - Step 2 depends on Step 1.
 - Step 3 depends on Step 1.
@@ -181,3 +193,6 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
 
 ### Step 14 Notes
 - 2025-10-20: Codified steady trailing camera + collision-free lanes, added guardrails to ensure prompts mention stability/avoidance, and updated guidance to keep the rider clear of obstacles.
+
+### Step 15 Notes
+- 2025-10-20: Converted traversal to first-person skytram exploration with branching rail choices, refreshed base prompt/guidance, planner rules, state defaults, and documentation to emphasize photoreal sightseeing over combat.
