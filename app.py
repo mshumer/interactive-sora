@@ -938,12 +938,13 @@ def render_scene_video(
                 parent_context_seconds,
                 MAX_CONTEXT_SECONDS - parent_context_seconds,
             )
+            requested_seconds = 8 if parent_context_seconds <= 0 else DEFAULT_SECONDS
             client, operation, uploaded_context_name = veo_create_video(
                 api_key=api_key,
                 veo_prompt=veo_prompt,
                 model=VEO_MODEL,
                 aspect_ratio=VEO_ASPECT_RATIO,
-                seconds=DEFAULT_SECONDS,
+                seconds=requested_seconds,
                 reference_video_path=parent_context_path,
             )
 
@@ -1745,12 +1746,13 @@ def generate_scene_video(
             f"Context video exceeds Veo's {MAX_CONTEXT_SECONDS}-second limit (got {context_seconds:.2f}s)."
         )
 
+    requested_seconds = 8 if context_seconds <= 0 else seconds
     client, operation, uploaded_context_name = veo_create_video(
         api_key=api_key,
         veo_prompt=veo_prompt,
         model=model,
         aspect_ratio=aspect_ratio,
-        seconds=seconds,
+        seconds=requested_seconds,
         reference_video_path=context_video,
     )
     operation = veo_poll_until_complete(client, operation, threading.Event())
