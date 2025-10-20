@@ -64,9 +64,9 @@ RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    "Experience an apocalyptic cyberpunk New York City from the front of an open-air skytram pod. "
-    "Mag-rails thread through authentic borough layouts—Times Square to Harlem to SoHo—with neon ruins, overgrown canopies, and AI sentinels flickering below. "
-    "You lean into the wind to survey districts, reactivate beacon relays, and uncover hidden enclaves. Faces stay obscured, but the city’s transformation is vivid and photorealistic."
+    "Experience an apocalyptic cyberpunk New York City from a first-person hyperbike—only the handlebars frame the shot. "
+    "Boulevards are cleared for speed, yet the skyline still shows neon fractures, overgrowth, and rogue AI silhouettes. "
+    "You blaze through authentic districts (Times Square, Harlem, SoHo, FiDi), scouting signal beacons and deciding which wide-open avenue to take next. Faces stay obscured; photorealism and momentum are everything."
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
@@ -80,14 +80,13 @@ CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "sora-shared-world")
 DEFAULT_PROMPT_GUIDANCE = (
     "\n".join(
         [
-            "Perspective: First-person view from the leading edge of an open-air skytram pod—nothing blocking the skyline.",
-            "Pace: Glide 1–3 city blocks per shot—smooth acceleration, no sudden collisions, no shakes.",
-            "Rails: Emphasize branching mag-rail junctions that let the pilot choose diverging paths through the borough.",
-            "Exploration: Showcase landmarks, inhabitants, and ambient stories rather than combat or obstacle dodging.",
+            "Perspective: First-person view from the hyperbike—only handlebars and the road ahead.",
+            "Pace: Cover 1–3 blocks per shot; smooth acceleration, no sudden collisions, no wobble.",
+            "Intersections: Highlight broad, obstacle-free avenues with multiple branch options (left/straight/right) to explore.",
+            "Exploration: Focus on scenery, signals, residents, and ambient stories rather than combat or clutter.",
             "Photorealism: Cinematic HDR lighting, physically-based materials, volumetric depth—never stylised or toy-like.",
-            "Audio: Continuous, heart-pounding soundscape blended with wind rush, rail resonance, and district ambience.",
-            "Discovery Hook: End each beat on a compelling reveal (new vista, hidden enclave, signal spike) prompting the next choice.",
-            "Show Junction: Hold the final seconds on the three diverging rails themselves (no signage/holograms) so each path is clearly framed.",
+            "Audio: Heart-pounding score blended with engine hum, wind rush, and district ambience.",
+            "Discovery Hook: End on a compelling reveal (vista, beacon spike, hidden enclave) while framing the available avenues.",
         ]
     )
 )
@@ -99,8 +98,6 @@ VIDEO_DIR = Path("sora_cyoa_videos")
 FRAME_DIR = Path("sora_cyoa_frames")
 VIDEO_DIR.mkdir(parents=True, exist_ok=True)
 FRAME_DIR.mkdir(parents=True, exist_ok=True)
-
-ROOT_REFERENCE_IMAGE = Path("data/source_image.png")
 
 storage_client = build_storage_client()
 logger = logging.getLogger("sora_shared_world")
@@ -417,7 +414,7 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
             candidate = (scene.get("scenario_display") or "")[:160]
     candidate = candidate.strip()
     if not candidate:
-        candidate = "Frame the junction—highlight left, right, and downward rails with glowing signage before committing."
+        candidate = "Hold on the wide three-way intersection before committing to a lane."
     scene["sora_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
     logger.info("[prompt] appended action beat: %s", candidate)
 
@@ -792,11 +789,11 @@ def collect_state_summaries(world_id: str, path: str) -> List[str]:
 
 
 STATE_SUMMARY_SYSTEM = """
-You are the chronicler for the apocalyptic cyberpunk NYC skytram expedition.
+You are the chronicler for the apocalyptic cyberpunk NYC hyperbike run.
 
 Summarise the evolving situation in at most three short bullet points.
-- Track which rail line the tram is on, beacon/signal progress, notable sights uncovered, and upcoming junction opportunities.
-- Mention district transitions or planned forks (e.g., diverting toward SoHo vs continuing to FiDi).
+- Track current avenue choice, beacon/signal progress, notable sights uncovered, and upcoming intersection options.
+- Mention district transitions or planned forks (e.g., veer toward SoHo vs continue into FiDi).
 - Keep bullets under 160 characters, starting each with "- ". No extra commentary.
 """.strip()
 
@@ -852,8 +849,7 @@ def render_scene_video(
     cancel_event: threading.Event,
 ) -> StoredAsset:
     video_id, video_path = None, None
-    reference_path: Optional[Path] = None
-    cleanup_reference: Optional[Path] = None
+    parent_last_frame: Optional[Path] = None
     parent = parent_path(path)
     if parent is not None:
         with session_scope() as session:
@@ -874,22 +870,14 @@ def render_scene_video(
             logger.info("[continuity] download path=%s type=%s exists=%s", parent_last_frame, type(parent_last_frame), parent_last_frame.exists() if isinstance(parent_last_frame, Path) else None)
             if isinstance(parent_last_frame, Path) and parent_last_frame.exists():
                 logger.info("[continuity] last frame ready at %s", parent_last_frame)
-                reference_path = parent_last_frame
-                cleanup_reference = parent_last_frame
             else:
                 logger.warning("[continuity] failed to obtain last frame for world=%s path=%s", world_id, path or "root")
-    else:
-        if ROOT_REFERENCE_IMAGE.exists():
-            reference_path = ROOT_REFERENCE_IMAGE
-            logger.info("[continuity] using root reference image %s", ROOT_REFERENCE_IMAGE)
-        else:
-            logger.warning("[continuity] root reference image missing at %s", ROOT_REFERENCE_IMAGE)
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = Path(tmp_dir)
-            if reference_path:
-                logger.info("[continuity] sending input_reference=%s", reference_path)
+            if parent_last_frame:
+                logger.info("[continuity] sending input_reference=%s", parent_last_frame)
             else:
                 logger.info("[continuity] no input_reference available for world=%s path=%s", world_id, path or "root")
             video_job = sora_create_video(
@@ -898,7 +886,7 @@ def render_scene_video(
                 model=SORA_MODEL,
                 size=VIDEO_SIZE,
                 seconds=DEFAULT_SECONDS,
-                input_reference_path=reference_path,
+                input_reference_path=parent_last_frame,
             )
             _update_scene_progress(world_id, path, video_job.get("progress"))
             video = sora_poll_until_complete(
@@ -920,8 +908,8 @@ def render_scene_video(
             asset = storage_client.upload(video_file, frame_file, key_prefix=key_prefix)
             return asset
     finally:
-        if cleanup_reference and cleanup_reference.exists():
-            cleanup_reference.unlink(missing_ok=True)
+        if parent_last_frame and parent_last_frame.exists():
+            parent_last_frame.unlink(missing_ok=True)
 
 
 def download_asset(stored_value: str, variant: str) -> Optional[Path]:
@@ -1029,7 +1017,7 @@ def _child_path(path: str, index: int) -> str:
 # === Planner Helpers ===
 
 PLANNER_SYSTEM = """
-You are the Scenario Planner for a Sora-powered, street-accurate cyberpunk New York City rail experience.
+You are the Scenario Planner for a Sora-powered, street-accurate cyberpunk New York City hyperbike run.
 
 Workflow:
 1. Read the WORLD BASE PROMPT (tone & stakes).
@@ -1040,29 +1028,29 @@ Workflow:
 
 Rules:
 - Shots are photorealistic, continuous 8-second scenes. They must begin already in motion, escalate by the 3-second mark, and close on a hook that pushes the next decision.
-- Perspective is first-person from the stabilized skytram cockpit. Keep the camera locked forward with gentle head turns—no third-person or external chase shots.
+- Perspective is first-person from the hyperbike; handlebars may edge the frame but nothing else blocks the view.
 - Photorealism is mandatory: cinematic HDR lighting, physically-based materials, crisp atmospheric depth, zero stylisation or toy-like renderings.
-- Movement must remain within 1–3 Manhattan blocks consistent with the rail route. Only switch to an adjacent catalog area when a junction logically branches there.
+- Movement must remain within 1–3 Manhattan blocks along wide, obstacle-free avenues. Only switch to an adjacent catalog area when a multi-lane intersection naturally branches there.
 - Faces of every figure stay obscured (hoods, masks, deep shadow). Content must remain PG-13 and free of copyrighted logos/characters.
-- Maintain geography: highlight real intersections, skyline silhouettes, and landmarks as seen from elevated rails.
-- Audio stays heart-pounding and continuous; blend tram hum, HUD chimes, and district motif.
-- Inventory represents cockpit controls (navigation holomap, signal scanner, stabilizer); show their effects on the ride rather than external gear.
-- Choices must revolve around diverging rail paths (left branch to one district, right branch to another, vertical spur descending into infrastructure, etc.).
-- End the shot by clearly presenting the available junction: all rails in view with signage/holographic markers that match the three upcoming choices (left/right/vertical or similar).
+- Maintain geography: highlight real intersections, skyline silhouettes, and landmarks sweeping past the bike.
+- Audio stays heart-pounding and continuous; blend engine hum, wind rush, and district motif.
+- Inventory represents onboard stabilizers, HUD overlays, and signal scanners; show their effects on the ride rather than external gear.
+- Choices must revolve around diverging avenues (left/straight/right, elevated ramp vs. tunnel, etc.).
+- End the shot by clearly presenting the open intersection with the available avenues visible so the upcoming choices match what the player just saw.
 
 Sora prompt structure (exact wording & order):
 Context (not visible in video, only for AI guidance):
 Location: <borough>, <district>/<neighborhood>, nearest <intersection>, heading <heading>, moved <blocks> blocks
 Faces: all faces obscured (hoods/masks/shadows) — mandatory
-Movement: <tech_in_use> skytram on mag-rails at velocity "fast"; respect 1–3 block traversal budget
-Inventory: <item in use> (tram interface/HUD element) and how it affects the ride
+Movement: <tech_in_use> hyperbike at velocity "fast" along cleared avenues; respect 1–3 block traversal budget
+Inventory: <item in use> (stabilizer/HUD control) and how it affects the ride
 Ecosystem: adversaries <...>; creatures <...>; hazards <...>
 Continuity: start from prior shot's final frame; keep time-of-day/weather consistent
 Audio: <audio motif>, continuous, heart-pounding, no copyrighted music
 Photorealism: cinematic HDR, physically-based materials, realistic textures, zero stylisation
-Camera: first-person on open-air tram nose, stabilized gimbal, gentle roll only, no collisions or jitter
+Camera: first-person helmet/handlebar view, stabilized, gentle lean only, no collisions or jitter
 
-Prompt: <Concrete 8-second cinematic beat from the open-air tram nose, highlighting skyline vistas, rail forks, ambient life, and a discovery>
+Prompt: <Concrete 8-second cinematic beat from the hyperbike, highlighting skyline vistas, multi-lane intersections, ambient life, and a discovery>
 
 Action Beat: <Imperative describing the climax that lands inside the 8-second window>
 

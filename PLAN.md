@@ -117,22 +117,20 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
   - Deliverables: Updated planner rules and prompt checks to enforce steady third-person framing and collision avoidance.
   - Dependencies: Step 13.
 
-- [x] 15) Skytram Exploration Mode
-  - Context: Bikes/grapples cause instability; need a first-person rail experience with fork choices.
-  - Goals: Reframe traversal as stabilized first-person mag-tram riding, simplify hazards, and focus choices on diverging rail paths that showcase districts.
-  - Deliverables: Updated base prompt/guidance, planner instructions, state schema defaults, and choice language to support branchable rail routes with exploratory beats.
+- [ ] 15) (Superseded) Skytram Exploration Mode
+  - Context: Attempted a stabilized rail experience; ultimately replaced by the hyperbike approach after testing.
+  - Goals: *(Historical)* Reframe traversal as first-person skytram riding with branching rails.
+  - Deliverables: Superseded by Step 17.
   - Dependencies: Steps 5–14.
 
-- [x] 16) Seed Root Tram Shot With Reference Image
-  - Context: Need consistent starting visuals.
-  - Goals: Feed `/Users/mattshumer/Downloads/Sora Control/data/source_image.png` as the input reference for the root generation.
-  - Deliverables: Backend logic pointing the root scene to the reference image (without deleting it).
-  - Dependencies: Steps 5–15.
+- [ ] 16) (Cancelled) Seed Root Tram Shot With Reference Image
+  - Context: Original plan to standardize the root visual via `data/source_image.png`.
+  - Status: Cancelled; hyperbike opener no longer uses a reference image.
 
-- [ ] 15) Transition to First-Person Skytram Exploration
-  - Context: High-speed bikes and grapples remain unstable; need traversal that plays to model strengths.
-  - Goals: Shift traversal to a stabilized first-person mag-rail tram focused on exploration, low obstacles, and skyline vistas; update prompts, guidance, and state defaults.
-  - Deliverables: Revised base prompt, planner system/guidance, state inventory, and documentation reflecting the skytram exploration format.
+- [x] 17) Hyperbike Exploration Mode
+  - Context: Tram approach proved limiting; reinstated first-person hyperbike with obstacle-free avenues.
+  - Goals: Update prompts, guidance, state defaults, and docs so every shot is a photoreal handlebar perspective with clear intersection choices.
+  - Deliverables: Revised base prompt, planner system, state schema/inventory, README updates.
   - Dependencies: Steps 5–14.
 
 ## Dependencies Summary
@@ -201,7 +199,10 @@ We will build a fast‑paced, heart‑pounding, interactive video experience set
 - 2025-10-20: Codified steady trailing camera + collision-free lanes, added guardrails to ensure prompts mention stability/avoidance, and updated guidance to keep the rider clear of obstacles.
 
 ### Step 15 Notes
-- 2025-10-20: Converted traversal to first-person skytram exploration with branching rail choices, refreshed base prompt/guidance, planner rules, state defaults, and documentation to emphasize photoreal sightseeing over combat.
+- 2025-10-20: *Superseded* — initial skytram experiment (kept for history).
 
 ### Step 16 Notes
-- 2025-10-20: Wired the root scene to preload `data/source_image.png` as the Sora input reference, ensuring the opening shot starts from a consistent visual baseline without altering the source file.
+- 2025-10-20: *Cancelled* — root reference image approach removed when returning to hyperbike.
+
+### Step 17 Notes
+- 2025-10-20: Switched back to first-person hyperbike traversal with obstacle-free avenues, updated prompts/guidance/state defaults, and refreshed documentation to match.
