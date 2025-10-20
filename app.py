@@ -77,7 +77,7 @@ except Exception:  # pragma: no cover
 APP_TITLE = "Veo Shared World API"
 
 DEFAULT_SECONDS = 8
-MAX_CONTEXT_SECONDS = 19.0
+MAX_CONTEXT_SECONDS = 141.0
 
 OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
 RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
@@ -912,23 +912,19 @@ def render_scene_video(
             )
     if parent_context_seconds is None:
         parent_context_seconds = 0.0
+    if parent_context_seconds > MAX_CONTEXT_SECONDS:
+        logger.error(
+            "[veo] context length exceeded limit seconds=%.2f path=%s",
+            parent_context_seconds,
+            path,
+        )
+        raise RuntimeError(
+            f"Parent context video exceeds Veo's {MAX_CONTEXT_SECONDS}-second limit. Restart from an earlier branch."
+        )
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_dir_path = Path(tmp_dir)
-            context_upload_path = parent_context_path
-            if parent_context_path and parent_context_path.exists():
-                upload_duration = _video_duration_seconds(parent_context_path)
-                if upload_duration and upload_duration > MAX_CONTEXT_SECONDS:
-                    context_upload_path = _trim_video_tail(
-                        parent_context_path, MAX_CONTEXT_SECONDS, tmp_dir_path
-                    )
-                    logger.info(
-                        "[veo] context trimmed for upload from %.2fs to %.2fs",
-                        upload_duration,
-                        MAX_CONTEXT_SECONDS,
-                    )
-
             logger.info(
                 "[veo] starting generation world=%s path=%s with context=%s",
                 world_id,
@@ -946,7 +942,7 @@ def render_scene_video(
                 model=VEO_MODEL,
                 aspect_ratio=VEO_ASPECT_RATIO,
                 seconds=DEFAULT_SECONDS,
-                reference_video_path=context_upload_path,
+                reference_video_path=parent_context_path,
             )
 
             initial_meta = getattr(operation, "metadata", None)
@@ -1685,34 +1681,6 @@ def _video_duration_seconds(path: Path) -> Optional[float]:
     return None
 
 
-def _trim_video_tail(source: Path, seconds: float, tmp_dir: Path) -> Path:
-    if FFMPEG_BIN is None:
-        logger.warning("[veo] cannot trim context video; ffmpeg unavailable")
-        return source
-    target = tmp_dir / "context_trim.mp4"
-    cmd = [
-        FFMPEG_BIN,
-        "-y",
-        "-sseof",
-        f"-{seconds}",
-        "-i",
-        str(source),
-        "-c",
-        "copy",
-        str(target),
-    ]
-    try:
-        subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if target.exists():
-            logger.info(
-                "[veo] trimmed context video from %s to %s seconds", source, seconds
-            )
-            return target
-    except subprocess.CalledProcessError:
-        logger.warning("[veo] ffmpeg trim failed; using original context video")
-    return source
-
-
 def extract_last_frame(video_path: Path, out_image_path: Path) -> Path:
     if cv2 is not None:
         cap = cv2.VideoCapture(str(video_path))
@@ -1766,86 +1734,80 @@ def generate_scene_video(
     seconds = normalize_seconds(seconds)
 
     context_seconds = 0.0
-    context_upload_tmp: Optional[tempfile.TemporaryDirectory] = None
-    context_upload_path = context_video
     if context_video is not None and context_video.exists():
         measured = _video_duration_seconds(context_video)
         if measured:
             context_seconds = measured
-        if measured and measured > MAX_CONTEXT_SECONDS:
-            context_upload_tmp = tempfile.TemporaryDirectory()
-            context_upload_path = _trim_video_tail(
-                context_video, MAX_CONTEXT_SECONDS, Path(context_upload_tmp.name)
-            )
-            context_seconds = min(measured, MAX_CONTEXT_SECONDS)
+    if context_seconds > MAX_CONTEXT_SECONDS:
+        raise RuntimeError(
+            f"Context video exceeds Veo's {MAX_CONTEXT_SECONDS}-second limit (got {context_seconds:.2f}s)."
+        )
+
+    client, operation, uploaded_context_name = veo_create_video(
+        api_key=api_key,
+        veo_prompt=veo_prompt,
+        model=model,
+        aspect_ratio=aspect_ratio,
+        seconds=seconds,
+        reference_video_path=context_video,
+    )
+    operation = veo_poll_until_complete(client, operation, threading.Event())
+    sample = _extract_generated_sample(operation)
+    logger.info(
+        "[veo] generation completed operation=%s samples=%s",
+        getattr(operation, "name", None),
+        len(getattr(getattr(operation, "result", None), "generated_videos", []) or []),
+    )
+
+    token = uuid.uuid4().hex
+    combined_path = VIDEO_DIR / f"{token}_combined.mp4"
+    veo_download_content(api_key, sample, combined_path)
+
+    clip_path = VIDEO_DIR / f"{token}.mp4"
+    if context_video is not None:
+        logger.debug(
+            "[veo] trimming clip seconds=%s combined=%s -> clip=%s",
+            seconds,
+            combined_path,
+            clip_path,
+        )
+        extract_tail_segment(combined_path, seconds, clip_path)
+    else:
+        shutil.copy2(combined_path, clip_path)
+
+    poster_path = FRAME_DIR / f"{token}_last.jpg"
+    extract_last_frame(combined_path, poster_path)
+
+    operation_name = getattr(operation, "name", None) or token
+
+    combined_duration = _video_duration_seconds(combined_path)
+    if combined_duration:
+        logger.info(
+            "[veo] combined duration for preset op=%s is %.2fs",
+            operation_name,
+            combined_duration,
+        )
+        new_context_seconds = int(math.ceil(combined_duration))
+    else:
+        new_context_seconds = seconds
 
     try:
-        client, operation, uploaded_context_name = veo_create_video(
-            api_key=api_key,
-            veo_prompt=veo_prompt,
-            model=model,
-            aspect_ratio=aspect_ratio,
-            seconds=seconds,
-            reference_video_path=context_upload_path,
-        )
-        operation = veo_poll_until_complete(client, operation, threading.Event())
-        sample = _extract_generated_sample(operation)
-        logger.info(
-            "[veo] generation completed operation=%s samples=%s",
-            getattr(operation, "name", None),
-            len(getattr(getattr(operation, "result", None), "generated_videos", []) or []),
-        )
+        if uploaded_context_name is not None:
+            logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
+            client.files.delete(name=uploaded_context_name)
+    except Exception:
+        logger.debug("[veo] preset context file deletion skipped", exc_info=True)
 
-        token = uuid.uuid4().hex
-        combined_path = VIDEO_DIR / f"{token}_combined.mp4"
-        veo_download_content(api_key, sample, combined_path)
+    logger.info(
+        "[veo] prepared outputs operation=%s clip=%s poster=%s combined=%s",
+        operation_name,
+        clip_path,
+        poster_path,
+        combined_path,
+    )
+    return operation_name, clip_path, poster_path, combined_path, new_context_seconds
 
-        clip_path = VIDEO_DIR / f"{token}.mp4"
-        if context_video is not None:
-            logger.debug(
-                "[veo] trimming clip seconds=%s combined=%s -> clip=%s",
-                seconds,
-                combined_path,
-                clip_path,
-            )
-            extract_tail_segment(combined_path, seconds, clip_path)
-        else:
-            shutil.copy2(combined_path, clip_path)
 
-        poster_path = FRAME_DIR / f"{token}_last.jpg"
-        extract_last_frame(combined_path, poster_path)
-
-        operation_name = getattr(operation, "name", None) or token
-
-        combined_duration = _video_duration_seconds(combined_path)
-        if combined_duration:
-            logger.info(
-                "[veo] combined duration for preset op=%s is %.2fs",
-                operation_name,
-                combined_duration,
-            )
-            new_context_seconds = int(math.ceil(combined_duration))
-        else:
-            new_context_seconds = seconds
-
-        try:
-            if uploaded_context_name is not None:
-                logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
-                client.files.delete(name=uploaded_context_name)
-        except Exception:
-            logger.debug("[veo] preset context file deletion skipped", exc_info=True)
-
-        logger.info(
-            "[veo] prepared outputs operation=%s clip=%s poster=%s combined=%s",
-            operation_name,
-            clip_path,
-            poster_path,
-            combined_path,
-        )
-        return operation_name, clip_path, poster_path, combined_path, new_context_seconds
-    finally:
-        if context_upload_tmp is not None:
-            context_upload_tmp.cleanup()
 
 
 if __name__ == "__main__":
