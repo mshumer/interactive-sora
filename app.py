@@ -962,7 +962,7 @@ def render_scene_video(
             if 'uploaded_context_name' in locals() and uploaded_context_name is not None:
                 client = locals().get('client')
                 if client is not None:
-                    client.files.delete(uploaded_context_name)
+                    client.files.delete(name=uploaded_context_name)
         except Exception:
             logger.debug("[veo] context file deletion skipped", exc_info=True)
 
@@ -1625,7 +1625,7 @@ def generate_scene_video(
 
     try:
         if uploaded_context_name is not None:
-            client.files.delete(uploaded_context_name)
+            client.files.delete(name=uploaded_context_name)
     except Exception:
         logger.debug("[veo] preset context file deletion skipped", exc_info=True)
 
