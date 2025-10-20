@@ -1641,6 +1641,11 @@ def generate_scene_video(
     )
     operation = veo_poll_until_complete(client, operation, threading.Event())
     sample = _extract_generated_sample(operation)
+    logger.info(
+        "[veo] generation completed operation=%s samples=%s",
+        getattr(operation, "name", None),
+        len(getattr(getattr(operation, "result", None), "generated_videos", []) or []),
+    )
 
     token = uuid.uuid4().hex
     combined_path = VIDEO_DIR / f"{token}_combined.mp4"
@@ -1648,6 +1653,12 @@ def generate_scene_video(
 
     clip_path = VIDEO_DIR / f"{token}.mp4"
     if context_video is not None:
+        logger.debug(
+            "[veo] trimming clip seconds=%s combined=%s -> clip=%s",
+            seconds,
+            combined_path,
+            clip_path,
+        )
         extract_tail_segment(combined_path, seconds, clip_path)
     else:
         shutil.copy2(combined_path, clip_path)
