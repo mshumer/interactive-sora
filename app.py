@@ -1425,11 +1425,11 @@ def _upload_context_video(client, reference_video_path: Optional[Path]):
         )
         if isinstance(record, str):
             logger.debug("[veo] upload returned raw id=%s", record)
-            return client.files.get(record)
+            return client.files.get(name=record)
         name = getattr(record, "name", None)
         if name:
             logger.debug("[veo] upload returned name=%s", name)
-            return client.files.get(name)
+            return client.files.get(name=name)
         logger.warning("[veo] upload returned unexpected record=%s", record)
         return record
     except Exception as exc:  # pragma: no cover - upstream errors propagate
