@@ -189,7 +189,7 @@ def build_tree(
     context_video_for_children: Optional[Path] = None
 
     if not scene.get("_planner_missing_prompt"):
-        _, clip_path, frame_path, combined_path = generate_scene_video(
+        _, clip_path, frame_path, combined_path, _ = generate_scene_video(
             api_key=video_api_key,
             veo_prompt=scene["veo_prompt"],
             model=veo_model,

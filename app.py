@@ -76,7 +76,8 @@ except Exception:  # pragma: no cover
 
 APP_TITLE = "Veo Shared World API"
 
-DEFAULT_SECONDS = 8
+DEFAULT_SECONDS = 7
+MAX_CONTEXT_SECONDS = 141
 
 OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
 RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
@@ -266,13 +267,8 @@ def utcnow() -> datetime:
 
 
 def normalize_seconds(secs: int) -> int:
-    allowed = (4, 8, 12)
+    allowed = (4, 7, 8, 12)
     return min(allowed, key=lambda value: abs(value - int(secs)))
-
-
-def context_duration_seconds(path: str) -> int:
-    depth = compute_depth(path)
-    return DEFAULT_SECONDS * max(1, depth + 1)
 
 
 @dataclass
@@ -483,7 +479,7 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
             candidate = (scene.get("scenario_display") or "")[:160]
     candidate = candidate.strip()
     if not candidate:
-        candidate = "Trigger a dramatic cross-world portal event within 8 seconds."
+        candidate = "Trigger a dramatic cross-world portal event within 7 seconds."
     scene["veo_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
     logger.info("[prompt] appended action beat: %s", candidate)
 
@@ -626,7 +622,7 @@ def _generate_scene_inner(
     ensure_action_beat(planner_result, planner_result.get("_chosen_choice"))
 
     try:
-        asset = render_scene_video(
+        asset, new_context_seconds = render_scene_video(
             world_id,
             path,
             planner_result["veo_prompt"],
@@ -678,7 +674,7 @@ def _generate_scene_inner(
             scene.poster_url = asset.poster_key
             scene.context_video_url = asset.context_video_key
         scene.video_seconds = DEFAULT_SECONDS
-        scene.context_video_seconds = context_duration_seconds(path)
+        scene.context_video_seconds = new_context_seconds
         scene.status = SceneStatus.READY
         scene.failure_code = None
         scene.failure_detail = None
@@ -857,9 +853,9 @@ def render_scene_video(
     veo_prompt: str,
     api_key: str,
     cancel_event: threading.Event,
-) -> StoredAsset:
+) -> Tuple[StoredAsset, int]:
     parent_context_path: Optional[Path] = None
-    parent_context_seconds: Optional[int] = None
+    parent_context_seconds: float = 0.0
     parent = parent_path(path)
     if parent is not None:
         with session_scope() as session:
@@ -898,13 +894,30 @@ def render_scene_video(
                         world_id,
                         path or "root",
                     )
-            parent_context_seconds = getattr(parent_scene, "context_video_seconds", None)
+            stored_total = getattr(parent_scene, "context_video_seconds", None)
+            if stored_total is None:
+                stored_total = getattr(parent_scene, "video_seconds", None)
+            if stored_total is not None:
+                parent_context_seconds = float(stored_total)
         else:
             logger.warning("[continuity] missing parent scene world=%s parent_path=%s", world_id, parent)
+    if parent_context_path and parent_context_path.exists():
+        measured = _video_duration_seconds(parent_context_path)
+        if measured:
+            parent_context_seconds = measured
+            logger.info(
+                "[veo] measured parent context duration=%.2fs path=%s",
+                parent_context_seconds,
+                path,
+            )
+    if parent_context_seconds is None:
+        parent_context_seconds = 0.0
 
-    if parent_context_seconds and parent_context_seconds > 141:
+    if parent_context_seconds > MAX_CONTEXT_SECONDS:
         logger.error(
-            "[veo] context length exceeded limit seconds=%s path=%s", parent_context_seconds, path
+            "[veo] context length exceeded limit seconds=%.2f path=%s",
+            parent_context_seconds,
+            path,
         )
         raise RuntimeError(
             "Parent context video exceeds Veo's 141-second extension limit. Restart from an earlier branch."
@@ -919,6 +932,11 @@ def render_scene_video(
                 world_id,
                 path or "root",
                 bool(parent_context_path),
+            )
+            logger.info(
+                "[veo] input context seconds=%.2f remaining headroom=%.2f",
+                parent_context_seconds,
+                MAX_CONTEXT_SECONDS - parent_context_seconds,
             )
             client, operation, uploaded_context_name = veo_create_video(
                 api_key=api_key,
@@ -954,6 +972,22 @@ def render_scene_video(
             poster_path = tmp_dir_path / "veo_last_frame.jpg"
             extract_last_frame(combined_path, poster_path)
 
+            combined_duration = _video_duration_seconds(combined_path)
+            if combined_duration:
+                logger.info(
+                    "[veo] combined duration=%.2fs (prev %.2fs + %ss)",
+                    combined_duration,
+                    parent_context_seconds,
+                    DEFAULT_SECONDS,
+                )
+                new_context_seconds = int(math.ceil(combined_duration))
+            else:
+                new_context_seconds = int(math.ceil(parent_context_seconds + DEFAULT_SECONDS))
+                logger.warning(
+                    "[veo] combined duration probe failed; using fallback=%ss",
+                    new_context_seconds,
+                )
+
             key_prefix = f"{world_id}/{path or 'root'}"
             asset = storage_client.upload(
                 clip_path,
@@ -968,7 +1002,14 @@ def render_scene_video(
                 asset.poster_url,
                 asset.context_video_url,
             )
-            return asset
+            logger.info(
+                "[veo] prepared outputs operation=%s clip=%s poster=%s combined=%s",
+                getattr(operation, "name", None),
+                asset.video_url,
+                asset.poster_url,
+                asset.context_video_url,
+            )
+            return asset, new_context_seconds
     finally:
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
@@ -1097,7 +1138,7 @@ Your job:
 - Produce a JSON object that contains:
   {
     "scenario_display": "A short paragraph (<= 120 words) narrating the current scene to show in the UI.",
-    "veo_prompt": "<A detailed Veo prompt for generating an 8-second extension segment.>",
+    "veo_prompt": "<A detailed Veo prompt for generating a 7-second extension segment.>",
     "choices": ["<choice 1>", "<choice 2>", "<choice 3>"],
     "choices_short": ["<concise choice 1>", "<concise choice 2>", "<concise choice 3>"]
   }
@@ -1106,7 +1147,7 @@ Rules:
 1) The 'veo_prompt' must be the exact text we send to Veo 3.1 via the Gemini API.
    - Include a line: "Context (not visible in video, only for AI guidance): ..." to carry forward continuity and constraints.
    - Include a line: "Prompt: ..." with concrete, cinematic directions (camera, subject, motion, lighting).
-   - Keep 'Prompt' focused on the next 8-second beat that will be appended to the existing footage.
+   - Keep 'Prompt' focused on the next 7-second beat that will be appended to the existing footage.
    - Assume the engine feeds Veo the full prior video, so design seamless momentum across cuts (matching motion, camera, props).
 
 2) Safety & platform constraints (strict):
@@ -1132,7 +1173,7 @@ Rules:
    - Allies/enemies from other worlds should react believably to cross-world physics or tech clashes.
 
 6) Pacing & shot design:
-   - Each 8-second beat must deliver a complete moment (setup → escalation → visible outcome) that meaningfully changes the situation.
+   - Each 7-second beat must deliver a complete moment (setup → escalation → visible outcome) that meaningfully changes the situation.
    - Start in motion—skip drawn-out establishing frames. Hit the key moment within the first 3 seconds and carry energy through the remainder.
    - End with a fresh reveal, reaction, or consequence that sets up the next decision.
 
@@ -1349,7 +1390,7 @@ TASK: Create the opening scene with three choices.
 BASE PROMPT:
 {base_prompt}
 
-Shot length: 8 seconds.
+Shot length: 7 seconds.
 Return JSON with keys: scenario_display, veo_prompt, choices (3), choices_short (3).
 {guidance_section}
 """.strip()
@@ -1383,7 +1424,7 @@ TASK: Create the next scene with three choices, continuing the story.
 BASE PROMPT:
 {base_prompt}
 
-PRIOR VIDEO PROMPTS (in order; each was used to generate an 8s Veo segment):
+PRIOR VIDEO PROMPTS (in order; each was used to generate a 7s Veo segment):
 {prior_joined}
 
 CURRENT STATE SNAPSHOT (bullet list):
@@ -1392,7 +1433,7 @@ CURRENT STATE SNAPSHOT (bullet list):
 PLAYER'S CHOSEN ACTION TO CONTINUE:
 {chosen_choice}
 
-Note: The next 8-second segment MUST flow seamlessly from the prior footage, matching character positions, motion vectors, and lighting unless the chosen action forces a justified shift.
+Note: The next 7-second segment MUST flow seamlessly from the prior footage, matching character positions, motion vectors, and lighting unless the chosen action forces a justified shift.
 
 Return JSON with keys: scenario_display, veo_prompt, choices (3), choices_short (3).
 {guidance_section}
@@ -1477,6 +1518,8 @@ def veo_create_video(
             config=genai_types.GenerateVideosConfig(
                 duration_seconds=seconds,
                 aspect_ratio=aspect_ratio,
+                resolution="720p",
+                number_of_videos=1,
             ),
         )
     except Exception as exc:  # pragma: no cover - upstream errors propagate
@@ -1600,6 +1643,46 @@ def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path
     return out_path
 
 
+def _video_duration_seconds(path: Path) -> Optional[float]:
+    try:
+        if cv2 is not None:
+            cap = cv2.VideoCapture(str(path))
+            if cap.isOpened():
+                fps = cap.get(cv2.CAP_PROP_FPS) or 0.0
+                frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0.0
+                cap.release()
+                if fps > 0 and frame_count > 0:
+                    return frame_count / fps
+    except Exception:
+        logger.debug("[veo] cv2 duration probe failed", exc_info=True)
+
+    if FFMPEG_BIN:
+        try:
+            cmd = [
+                FFMPEG_BIN,
+                "-i",
+                str(path),
+                "-hide_banner",
+            ]
+            proc = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+            )
+            output = proc.stderr or proc.stdout
+            if output:
+                for line in output.splitlines():
+                    if "Duration:" in line:
+                        duration_token = line.split("Duration:", 1)[1].split(",", 1)[0].strip()
+                        h, m, s = duration_token.split(":")
+                        return int(h) * 3600 + int(m) * 60 + float(s)
+        except Exception:
+            logger.debug("[veo] ffmpeg duration probe failed", exc_info=True)
+    return None
+
+
 def extract_last_frame(video_path: Path, out_image_path: Path) -> Path:
     if cv2 is not None:
         cap = cv2.VideoCapture(str(video_path))
@@ -1649,8 +1732,18 @@ def generate_scene_video(
     aspect_ratio: str,
     seconds: int,
     context_video: Optional[Path],
-) -> Tuple[str, Path, Path, Path]:
+) -> Tuple[str, Path, Path, Path, int]:
     seconds = normalize_seconds(seconds)
+
+    context_seconds = 0.0
+    if context_video is not None and context_video.exists():
+        measured = _video_duration_seconds(context_video)
+        if measured:
+            context_seconds = measured
+    if context_seconds > MAX_CONTEXT_SECONDS:
+        raise RuntimeError(
+            f"Context video exceeds Veo's {MAX_CONTEXT_SECONDS}-second limit (got {context_seconds:.2f}s)."
+        )
 
     client, operation, uploaded_context_name = veo_create_video(
         api_key=api_key,
@@ -1689,6 +1782,17 @@ def generate_scene_video(
 
     operation_name = getattr(operation, "name", None) or token
 
+    combined_duration = _video_duration_seconds(combined_path)
+    if combined_duration:
+        logger.info(
+            "[veo] combined duration for preset op=%s is %.2fs",
+            operation_name,
+            combined_duration,
+        )
+        new_context_seconds = int(math.ceil(combined_duration))
+    else:
+        new_context_seconds = seconds
+
     try:
         if uploaded_context_name is not None:
             logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
@@ -1703,7 +1807,7 @@ def generate_scene_video(
         poster_path,
         combined_path,
     )
-    return operation_name, clip_path, poster_path, combined_path
+    return operation_name, clip_path, poster_path, combined_path, new_context_seconds
 
 
 if __name__ == "__main__":

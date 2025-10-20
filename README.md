@@ -6,7 +6,7 @@
 
 **One canonical choose-your-own adventure world, expanded by the community.**
 
-The shared canon is now a portal-hopping multiverse: the Courier chases chronoglyph shards through remixed takes on famous game worlds (neon Vice City vibes, rune-soaked gothic battlefields, clockwork fantasy cities) to seal the Cataclysm Rift. Every 8-second beat delivers a high-energy action moment and sets up the next choice. When a branch already exists its video plays instantly; if not, explorers can contribute their own Gemini (Veo 3.1) key—plus an OpenAI planner key if they want—to mint the clip for everyone else.
+The shared canon is now a portal-hopping multiverse: the Courier chases chronoglyph shards through remixed takes on famous game worlds (neon Vice City vibes, rune-soaked gothic battlefields, clockwork fantasy cities) to seal the Cataclysm Rift. Every 7-second beat delivers a high-energy action moment and sets up the next choice. When a branch already exists its video plays instantly; if not, explorers can contribute their own Gemini (Veo 3.1) key—plus an OpenAI planner key if they want—to mint the clip for everyone else.
 
 ---
 
@@ -88,7 +88,7 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 - Storyboard/timeline reflects the canonical branch status in real time.
 - Active generations surface live progress so explorers can see how close a branch is to finishing.
 - Behind the scenes, each scene stores a state summary (generated with `gpt-5-mini`) so future branches carry forward the evolving world context.
-- Planner prompts now emphasise a full 8-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
+- Planner prompts now emphasise a full 7-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
 - The Nexus Gate opening beat presents three mysterious portals; hit **Restart** anytime to return there and choose a different world with instant playback of already-generated branches.
 
 ---
@@ -96,7 +96,7 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 ## Veo 3.1 Continuity
 
 - Each freshly generated beat is stitched onto the entire path-to-date using Veo 3.1 scene extension, so every new prompt sees the full video context instead of a single poster frame.
-- The backend stores both the delivered 8-second clip and the aggregated continuity file for future generations.
+- The backend stores both the delivered 7-second clip and the aggregated continuity file for future generations.
 - Veo's current extension limit is 141 seconds of source video; the service automatically guards against longer branches and asks players to restart earlier if needed.
 
 ---
