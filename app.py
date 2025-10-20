@@ -423,6 +423,55 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
     logger.info("[prompt] appended action beat: %s", candidate)
 
 
+_INTERSECTION_SYNONYMS = {
+    "st": ["street"],
+    "ave": ["avenue"],
+    "av": ["avenue"],
+    "blvd": ["boulevard"],
+    "rd": ["road"],
+    "hwy": ["highway"],
+    "pkwy": ["parkway"],
+    "sq": ["square"],
+    "pl": ["place"],
+    "ctr": ["center"],
+    "ctr.": ["center"],
+    "w": ["west"],
+    "e": ["east"],
+    "n": ["north"],
+    "s": ["south"],
+}
+
+
+def _tokenize_intersection(value: str) -> List[str]:
+    return re.findall(r"[A-Za-z0-9]+", value.lower())
+
+
+def _token_in_prompt(token: str, prompt_lower: str) -> bool:
+    variants = {token}
+    variants.update(_INTERSECTION_SYNONYMS.get(token, []))
+    if token.endswith(("st", "nd", "rd", "th")) and token[:-2].isdigit():
+        variants.add(token[:-2])
+        variants.add(token[:-2] + "th")
+    if token.isdigit():
+        variants.update({token + suffix for suffix in ("st", "nd", "rd", "th")})
+    for part in variants:
+        if part and part in prompt_lower:
+            return True
+    return False
+
+
+def _intersection_in_prompt(intersection: str, prompt_lower: str) -> bool:
+    tokens = _tokenize_intersection(intersection)
+    if not tokens:
+        return True
+    matches = 0
+    for token in tokens:
+        if _token_in_prompt(token, prompt_lower):
+            matches += 1
+    required = min(len(tokens), max(2, len(tokens) // 2 + 1))
+    return matches >= required
+
+
 def validate_sora_prompt_structure(prompt: str) -> Optional[str]:
     required_tokens = [
         "Context (not visible",
@@ -580,7 +629,7 @@ def _generate_scene_inner(
     movement_state = next_state.get("movement", {}) if isinstance(next_state, dict) else {}
     inventory_state = next_state.get("inventory", {}) if isinstance(next_state, dict) else {}
     audio_state = next_state.get("audio", {}) if isinstance(next_state, dict) else {}
-
+    prompt_lower = planner_result["sora_prompt"].lower()
     required_mentions = {
         "nearest_intersection": location.get("nearest_intersection"),
         "heading": location.get("heading"),
@@ -591,7 +640,12 @@ def _generate_scene_inner(
     missing_mentions = [
         key
         for key, value in required_mentions.items()
-        if isinstance(value, str) and value and value not in planner_result["sora_prompt"]
+        if isinstance(value, str)
+        and value
+        and (
+            (key == "nearest_intersection" and not _intersection_in_prompt(value, prompt_lower))
+            or (key != "nearest_intersection" and value.lower() not in prompt_lower)
+        )
     ]
     blocks = location.get("blocks_moved")
     if isinstance(blocks, int) and str(blocks) not in planner_result["sora_prompt"]:
@@ -601,9 +655,8 @@ def _generate_scene_inner(
         and "velocity 'fast'" not in planner_result["sora_prompt"]
     ):
         missing_mentions.append("velocity_fast")
-    if "obscured" not in planner_result["sora_prompt"].lower():
+    if "obscured" not in prompt_lower:
         missing_mentions.append("faces_obscured")
-    prompt_lower = planner_result["sora_prompt"].lower()
     if "photoreal" not in prompt_lower:
         missing_mentions.append("photorealism")
     if "steady trailing" not in prompt_lower and "steady third-person" not in prompt_lower:
