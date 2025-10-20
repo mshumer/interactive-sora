@@ -87,6 +87,7 @@ DEFAULT_PROMPT_GUIDANCE = (
             "Photorealism: Cinematic HDR lighting, physically-based materials, volumetric depth—never stylised or toy-like.",
             "Audio: Continuous, heart-pounding soundscape blended with wind rush, rail resonance, and district ambience.",
             "Discovery Hook: End each beat on a compelling reveal (new vista, hidden enclave, signal spike) prompting the next choice.",
+            "Show Junction: Hold the final seconds on the three diverging rails themselves (no signage/holograms) so each path is clearly framed.",
         ]
     )
 )
@@ -414,7 +415,7 @@ def ensure_action_beat(scene: Dict[str, Any], fallback_choice: Optional[str]) ->
             candidate = (scene.get("scenario_display") or "")[:160]
     candidate = candidate.strip()
     if not candidate:
-        candidate = "Unveil a breathtaking city vista as the skytram dives through the neon canyon."
+        candidate = "Frame the junction—highlight left, right, and downward rails with glowing signage before committing."
     scene["sora_prompt"] = prompt.rstrip() + f"\nAction Beat: {candidate}"
     logger.info("[prompt] appended action beat: %s", candidate)
 
@@ -1036,6 +1037,7 @@ Rules:
 - Audio stays heart-pounding and continuous; blend tram hum, HUD chimes, and district motif.
 - Inventory represents cockpit controls (navigation holomap, signal scanner, stabilizer); show their effects on the ride rather than external gear.
 - Choices must revolve around diverging rail paths (left branch to one district, right branch to another, vertical spur descending into infrastructure, etc.).
+- End the shot by clearly presenting the available junction: all rails in view with signage/holographic markers that match the three upcoming choices (left/right/vertical or similar).
 
 Sora prompt structure (exact wording & order):
 Context (not visible in video, only for AI guidance):
