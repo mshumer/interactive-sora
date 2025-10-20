@@ -93,6 +93,14 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 
 ---
 
+## Veo 3.1 Continuity
+
+- Each freshly generated beat is stitched onto the entire path-to-date using Veo 3.1 scene extension, so every new prompt sees the full video context instead of a single poster frame.
+- The backend stores both the delivered 8-second clip and the aggregated continuity file for future generations.
+- Veo's current extension limit is 141 seconds of source video; the service automatically guards against longer branches and asks players to restart earlier if needed.
+
+---
+
 ## Telemetry & Operations
 
 - `SceneMetric` rows capture storage usage for each completed render.
