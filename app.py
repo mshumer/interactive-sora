@@ -147,9 +147,11 @@ def _build_genai_client(api_key: str):
 def _resolve_file_download_uri(file_obj: Any) -> str:
     download_uri = getattr(file_obj, "download_uri", None)
     if download_uri:
+        logger.debug("[veo] resolved download_uri=%s", download_uri)
         return download_uri
     uri = getattr(file_obj, "uri", None)
     if isinstance(uri, str) and uri.startswith("http"):
+        logger.debug("[veo] resolved http uri=%s", uri)
         return uri
     name = getattr(file_obj, "name", None)
     if isinstance(name, str) and name.startswith("files/"):
@@ -1395,17 +1397,27 @@ Return JSON with keys: scenario_display, veo_prompt, choices (3), choices_short 
 
 def _upload_context_video(client, reference_video_path: Optional[Path]):
     if reference_video_path is None or not reference_video_path.exists():
+        logger.debug("[veo] no context video to upload")
         return None
     try:
+        stat = reference_video_path.stat()
+        logger.info(
+            "[veo] uploading context video path=%s bytes=%s",
+            reference_video_path,
+            stat.st_size,
+        )
         record = client.files.upload(
             file=str(reference_video_path),
             config=genai_types.UploadFileConfig(mime_type="video/mp4"),
         )
         if isinstance(record, str):
+            logger.debug("[veo] upload returned raw id=%s", record)
             return client.files.get(record)
         name = getattr(record, "name", None)
         if name:
+            logger.debug("[veo] upload returned name=%s", name)
             return client.files.get(name)
+        logger.warning("[veo] upload returned unexpected record=%s", record)
         return record
     except Exception as exc:  # pragma: no cover - upstream errors propagate
         raise RuntimeError(f"Failed to upload context video to Gemini: {exc}") from exc
@@ -1428,8 +1440,23 @@ def veo_create_video(
         video_uri = _resolve_file_download_uri(upload)
         video_arg = genai_types.Video(uri=video_uri)
         uploaded_context_name = getattr(upload, "name", None)
+        logger.info(
+            "[veo] context upload resolved name=%s uri=%s",
+            uploaded_context_name,
+            video_uri,
+        )
+    else:
+        logger.debug("[veo] generating without context upload")
 
     try:
+        logger.info(
+            "[veo] invoking generate_videos model=%s seconds=%s aspect=%s context=%s",
+            model,
+            seconds,
+            aspect_ratio,
+            bool(video_arg),
+        )
+        logger.debug("[veo] prompt=%s", veo_prompt)
         operation = client.models.generate_videos(
             model=model,
             prompt=veo_prompt,
@@ -1442,6 +1469,7 @@ def veo_create_video(
     except Exception as exc:  # pragma: no cover - upstream errors propagate
         raise RuntimeError(f"Veo create failed: {exc}") from exc
 
+    logger.info("[veo] generation started operation=%s", getattr(operation, "name", None))
     return client, operation, uploaded_context_name
 
 
@@ -1467,7 +1495,13 @@ def veo_poll_until_complete(
         if cancel_event.is_set():
             raise SceneCancelled()
         time.sleep(3)
-        current = client.operations.get(current.name)
+        current = client.operations.get(current)
+        logger.debug(
+            "[veo] polled operation name=%s done=%s error=%s",
+            getattr(current, "name", None),
+            getattr(current, "done", None),
+            getattr(current, "error", None),
+        )
         if progress_callback:
             progress_callback(_progress(getattr(current, "metadata", None)))
 
