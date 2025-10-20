@@ -1100,10 +1100,36 @@ def responses_create(api_key: str, model: str, instructions: str, user_input: st
         "instructions": instructions,
         "input": user_input,
     }
-    response = requests.post(RESPONSES_ENDPOINT, headers=headers, json=payload, timeout=120)
-    if response.status_code >= 400:
-        raise RuntimeError(f"Responses API error {response.status_code}: {response.text}")
-    data = response.json()
+    last_error: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                RESPONSES_ENDPOINT,
+                headers=headers,
+                json=payload,
+                timeout=180,
+            )
+            if response.status_code >= 400:
+                raise RuntimeError(
+                    f"Responses API error {response.status_code}: {response.text}"
+                )
+            data = response.json()
+            break
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as exc:
+            last_error = exc
+            logger.warning(
+                "responses_create timeout attempt=%s model=%s", attempt + 1, model
+            )
+            if attempt == 2:
+                raise
+            time.sleep(2 ** attempt)
+        except Exception as exc:
+            last_error = exc
+            raise
+    else:
+        if last_error:
+            raise last_error
+        raise RuntimeError("Responses API returned no data after retries")
 
     text = data.get("output_text", "")
     if text:
