@@ -144,6 +144,20 @@ def _build_genai_client(api_key: str):
     return genai.Client(api_key=api_key)
 
 
+def _resolve_file_download_uri(file_obj: Any) -> str:
+    download_uri = getattr(file_obj, "download_uri", None)
+    if download_uri:
+        return download_uri
+    uri = getattr(file_obj, "uri", None)
+    if isinstance(uri, str) and uri.startswith("http"):
+        return uri
+    name = getattr(file_obj, "name", None)
+    if isinstance(name, str) and name.startswith("files/"):
+        base = GEMINI_API_BASE.rstrip("/")
+        return f"{base}/{name}:download?alt=media"
+    raise RuntimeError("Gemini file upload missing download URI")
+
+
 storage_client = build_storage_client()
 logger = logging.getLogger("veo_shared_world")
 if not logger.handlers:
@@ -899,7 +913,7 @@ def render_scene_video(
                 path or "root",
                 bool(parent_context_path),
             )
-            client, operation, uploaded_context = veo_create_video(
+            client, operation, uploaded_context_name = veo_create_video(
                 api_key=api_key,
                 veo_prompt=veo_prompt,
                 model=VEO_MODEL,
@@ -945,10 +959,10 @@ def render_scene_video(
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
         try:
-            if 'uploaded_context' in locals() and uploaded_context is not None:
+            if 'uploaded_context_name' in locals() and uploaded_context_name is not None:
                 client = locals().get('client')
                 if client is not None:
-                    client.files.delete(uploaded_context.name)
+                    client.files.delete(uploaded_context_name)
         except Exception:
             logger.debug("[veo] context file deletion skipped", exc_info=True)
 
@@ -1387,7 +1401,10 @@ def _upload_context_video(client, reference_video_path: Optional[Path]):
             file=str(reference_video_path),
             config=genai_types.UploadFileConfig(mime_type="video/mp4"),
         )
-        return upload
+        try:
+            return client.files.get(upload.name)
+        except Exception:
+            return upload
     except Exception as exc:  # pragma: no cover - upstream errors propagate
         raise RuntimeError(f"Failed to upload context video to Gemini: {exc}") from exc
 
@@ -1404,8 +1421,11 @@ def veo_create_video(
     upload = _upload_context_video(client, reference_video_path)
 
     video_arg = None
+    uploaded_context_name: Optional[str] = None
     if upload is not None:
-        video_arg = genai_types.Video(uri=upload.name)
+        video_uri = _resolve_file_download_uri(upload)
+        video_arg = genai_types.Video(uri=video_uri)
+        uploaded_context_name = getattr(upload, "name", None)
 
     try:
         operation = client.models.generate_videos(
@@ -1420,7 +1440,7 @@ def veo_create_video(
     except Exception as exc:  # pragma: no cover - upstream errors propagate
         raise RuntimeError(f"Veo create failed: {exc}") from exc
 
-    return client, operation, upload
+    return client, operation, uploaded_context_name
 
 
 def veo_poll_until_complete(
@@ -1575,7 +1595,7 @@ def generate_scene_video(
 ) -> Tuple[str, Path, Path, Path]:
     seconds = normalize_seconds(seconds)
 
-    client, operation, uploaded_context = veo_create_video(
+    client, operation, uploaded_context_name = veo_create_video(
         api_key=api_key,
         veo_prompt=veo_prompt,
         model=model,
@@ -1602,8 +1622,8 @@ def generate_scene_video(
     operation_name = getattr(operation, "name", None) or token
 
     try:
-        if uploaded_context is not None:
-            client.files.delete(uploaded_context.name)
+        if uploaded_context_name is not None:
+            client.files.delete(uploaded_context_name)
     except Exception:
         logger.debug("[veo] preset context file deletion skipped", exc_info=True)
 
