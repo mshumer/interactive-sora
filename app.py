@@ -212,6 +212,7 @@ class SceneResponse(BaseModel):
     progress_updated_at: Optional[datetime] = Field(None, alias="progressUpdatedAt")
     state_summary: Optional[str] = Field(None, alias="stateSummary")
     context_video_seconds: Optional[int] = Field(None, alias="contextVideoSeconds")
+    context_file_id: Optional[str] = Field(None, alias="contextFileId")
 
 
 class SceneGenerationRequest(BaseModel):
@@ -1623,12 +1624,17 @@ def _extract_generated_sample(operation) -> Any:
     return result.generated_videos[0]
 
 
-def veo_download_content(api_key: str, sample: Any, out_path: Path) -> Path:
+def veo_download_content(client, sample: Any, out_path: Path) -> Path:
     video_node = getattr(sample, "video", None)
     if video_node is None and isinstance(sample, dict):
         video_node = sample.get("video")
     if video_node is None:
         raise RuntimeError("Veo sample missing video payload")
+
+    if hasattr(video_node, "save"):
+        client.files.download(file=video_node)
+        video_node.save(str(out_path))
+        return out_path
 
     uri = getattr(video_node, "uri", None)
     if uri is None and isinstance(video_node, dict):
@@ -1636,7 +1642,7 @@ def veo_download_content(api_key: str, sample: Any, out_path: Path) -> Path:
 
     if uri:
         logger.debug("[veo] downloading video content from uri=%s", uri)
-        with requests.get(uri, headers={"x-goog-api-key": api_key}, stream=True, timeout=1800) as response:
+        with requests.get(uri, stream=True, timeout=1800) as response:
             if response.status_code >= 400:
                 raise RuntimeError(f"Veo download failed ({response.status_code}): {response.text}")
             with out_path.open("wb") as fh:
