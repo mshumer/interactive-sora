@@ -1789,7 +1789,7 @@ def generate_scene_video(
         model=model,
         aspect_ratio=aspect_ratio,
         seconds=seconds,
-        reference_video_path=context_video,
+        reference_video=context_video,
     )
     operation = veo_poll_until_complete(client, operation, threading.Event())
     sample = _extract_generated_sample(operation)
