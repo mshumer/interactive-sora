@@ -212,7 +212,7 @@ class SceneResponse(BaseModel):
     progress_updated_at: Optional[datetime] = Field(None, alias="progressUpdatedAt")
     state_summary: Optional[str] = Field(None, alias="stateSummary")
     context_video_seconds: Optional[int] = Field(None, alias="contextVideoSeconds")
-    context_file_id: Optional[str] = Field(None, alias="contextFileId")
+    context_video_uri: Optional[str] = Field(None, alias="contextVideoUri")
 
 
 class SceneGenerationRequest(BaseModel):
@@ -539,7 +539,7 @@ def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
         progressUpdatedAt=getattr(scene, "progress_updated_at", None),
         stateSummary=getattr(scene, "state_summary", None),
         contextVideoSeconds=getattr(scene, "context_video_seconds", None),
-        contextFileId=getattr(scene, "context_file_id", None),
+        contextVideoUri=getattr(scene, "context_video_uri", None),
     )
 
 
@@ -624,7 +624,7 @@ def _generate_scene_inner(
     ensure_action_beat(planner_result, planner_result.get("_chosen_choice"))
 
     try:
-        asset, new_context_seconds, context_file_id = render_scene_video(
+        asset, new_context_seconds, context_video_uri = render_scene_video(
             world_id,
             path,
             planner_result["veo_prompt"],
@@ -677,7 +677,7 @@ def _generate_scene_inner(
             scene.context_video_url = asset.context_video_key
         scene.video_seconds = DEFAULT_SECONDS
         scene.context_video_seconds = new_context_seconds
-        scene.context_file_id = context_file_id
+        scene.context_video_uri = context_video_uri
         scene.status = SceneStatus.READY
         scene.failure_code = None
         scene.failure_detail = None
@@ -851,6 +851,7 @@ TASK: Summarise the evolving state using at most three bullets as instructed.
 
 
 
+
 def render_scene_video(
     world_id: str,
     path: str,
@@ -860,7 +861,7 @@ def render_scene_video(
 ) -> Tuple[StoredAsset, int, Optional[str]]:
     parent_context_path: Optional[Path] = None
     parent_context_seconds: float = 0.0
-    parent_context_file_id: Optional[str] = None
+    parent_context_uri: Optional[str] = None
     parent = parent_path(path)
     if parent is not None:
         with session_scope() as session:
@@ -904,7 +905,7 @@ def render_scene_video(
                 stored_total = getattr(parent_scene, "video_seconds", None)
             if stored_total is not None:
                 parent_context_seconds = float(stored_total)
-            parent_context_file_id = getattr(parent_scene, "context_file_id", None)
+            parent_context_uri = getattr(parent_scene, "context_video_uri", None)
         else:
             logger.warning("[continuity] missing parent scene world=%s parent_path=%s", world_id, parent)
     if parent_context_path and parent_context_path.exists():
@@ -931,7 +932,7 @@ def render_scene_video(
     client = _build_genai_client(api_key)
     asset: Optional[StoredAsset] = None
     new_context_seconds = DEFAULT_SECONDS
-    context_file_id: Optional[str] = None
+    context_video_uri: Optional[str] = None
     uploaded_context_name: Optional[str] = None
 
     try:
@@ -949,25 +950,12 @@ def render_scene_video(
                 MAX_CONTEXT_SECONDS - parent_context_seconds,
             )
 
-            reference_video_obj: Optional[genai_types.Video] = None
-            if parent_context_file_id:
-                try:
-                    fetched = client.files.get(name=parent_context_file_id)
-                    ref_uri = getattr(fetched, "uri", None) or getattr(fetched, "download_uri", None)
-                    if ref_uri:
-                        reference_video_obj = genai_types.Video(uri=ref_uri)
-                        logger.info(
-                            "[veo] using stored Gemini file id %s for context",
-                            parent_context_file_id,
-                        )
-                except Exception as exc:
-                    logger.warning(
-                        "[veo] failed to fetch context file id=%s: %s",
-                        parent_context_file_id,
-                        exc,
-                    )
+            reference_input: Optional[object] = None
+            if parent_context_uri:
+                reference_input = genai_types.File(uri=parent_context_uri)
+            elif parent_context_path and parent_context_path.exists():
+                reference_input = parent_context_path
 
-            reference_input = reference_video_obj if reference_video_obj is not None else parent_context_path
             client, operation, uploaded_context_name = veo_create_video(
                 api_key=api_key,
                 veo_prompt=veo_prompt,
@@ -1021,7 +1009,7 @@ def render_scene_video(
 
             video_node = getattr(sample, "video", None)
             if video_node is not None:
-                context_file_id = getattr(video_node, "name", None)
+                context_video_uri = getattr(video_node, "uri", None) or getattr(video_node, "name", None)
 
             key_prefix = f"{world_id}/{path or 'root'}"
             asset = storage_client.upload(
@@ -1056,7 +1044,7 @@ def render_scene_video(
 
     if asset is None:
         raise RuntimeError("Veo generation failed: no asset produced")
-    return asset, new_context_seconds, context_file_id
+    return asset, new_context_seconds, context_video_uri
 
 
 
@@ -1815,14 +1803,10 @@ def generate_scene_video(
             operation_name,
             combined_duration,
         )
-        new_context_seconds = int(math.ceil(combined_duration))
-    else:
-        new_context_seconds = seconds
-
     video_node = getattr(sample, "video", None)
-    context_file_id = None
+    context_video_uri = None
     if video_node is not None:
-        context_file_id = getattr(video_node, "name", None)
+        context_video_uri = getattr(video_node, "uri", None) or getattr(video_node, "name", None)
 
     try:
         if uploaded_context_name is not None:
@@ -1838,7 +1822,7 @@ def generate_scene_video(
         poster_path,
         combined_path,
     )
-    return operation_name, clip_path, poster_path, combined_path, context_file_id
+    return operation_name, clip_path, poster_path, combined_path, context_video_uri
 
 
 

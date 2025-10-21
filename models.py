@@ -49,7 +49,7 @@ class Scene(Base):
     video_seconds = Column(Integer, nullable=True)
     context_video_url = Column(Text, nullable=True)
     context_video_seconds = Column(Integer, nullable=True)
-    context_file_id = Column(Text, nullable=True)
+    context_video_uri = Column(Text, nullable=True)
     planner_model = Column(String(128), nullable=True)
     planner_raw = Column(JSON_TYPE, nullable=True)
     failure_code = Column(String(128), nullable=True)
