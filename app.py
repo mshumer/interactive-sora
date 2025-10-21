@@ -1639,7 +1639,8 @@ def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path
         raise ValueError("seconds must be positive")
     if FFMPEG_BIN is None:
         raise RuntimeError("FFmpeg is required to trim Veo output but was not found.")
-    cmd = [
+    # Try the fast path first: stream copy with timestamps rebased for HTML5 players.
+    copy_cmd = [
         FFMPEG_BIN,
         "-y",
         "-sseof",
@@ -1650,9 +1651,55 @@ def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path
         str(seconds),
         "-c",
         "copy",
+        "-avoid_negative_ts",
+        "make_zero",
+        "-reset_timestamps",
+        "1",
+        "-movflags",
+        "+faststart",
         str(out_path),
     ]
-    subprocess.check_call(cmd)
+
+    def _run(cmd: List[str]) -> None:
+        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    try:
+        _run(copy_cmd)
+        return out_path
+    except subprocess.CalledProcessError as exc:
+        logger.warning("[veo] ffmpeg copy trim failed exit=%s", exc.returncode)
+        if out_path.exists():
+            out_path.unlink(missing_ok=True)
+
+    # Fallback: re-encode the tail segment so we always emit a decodable clip.
+    transcode_cmd = [
+        FFMPEG_BIN,
+        "-y",
+        "-sseof",
+        f"-{seconds + 0.5}",
+        "-i",
+        str(video_path),
+        "-t",
+        str(max(seconds + 0.5, seconds)),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
+        "-af",
+        "apad",
+        str(out_path),
+    ]
+    _run(transcode_cmd)
     return out_path
 
 
