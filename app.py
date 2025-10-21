@@ -1639,22 +1639,24 @@ def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path
         raise ValueError("seconds must be positive")
     if FFMPEG_BIN is None:
         raise RuntimeError("FFmpeg is required to trim Veo output but was not found.")
+    duration = _video_duration_seconds(video_path)
+    start_time = max((duration - seconds) if duration else 0.0, 0.0)
+    safety_pad = 0.05
+
     # Try the fast path first: stream copy with timestamps rebased for HTML5 players.
     copy_cmd = [
         FFMPEG_BIN,
         "-y",
-        "-sseof",
-        f"-{seconds}",
+        "-ss",
+        f"{start_time:.3f}",
         "-i",
         str(video_path),
         "-t",
-        str(seconds),
+        f"{seconds + safety_pad:.3f}",
         "-c",
         "copy",
         "-avoid_negative_ts",
         "make_zero",
-        "-reset_timestamps",
-        "1",
         "-movflags",
         "+faststart",
         str(out_path),
@@ -1672,15 +1674,16 @@ def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path
             out_path.unlink(missing_ok=True)
 
     # Fallback: re-encode the tail segment so we always emit a decodable clip.
+    transcode_start = max(start_time - 0.15, 0.0)
     transcode_cmd = [
         FFMPEG_BIN,
         "-y",
-        "-sseof",
-        f"-{seconds + 0.5}",
+        "-ss",
+        f"{transcode_start:.3f}",
         "-i",
         str(video_path),
         "-t",
-        str(max(seconds + 0.5, seconds)),
+        f"{seconds + 0.35:.3f}",
         "-c:v",
         "libx264",
         "-preset",
@@ -1695,8 +1698,7 @@ def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path
         "192k",
         "-movflags",
         "+faststart",
-        "-af",
-        "apad",
+        "-shortest",
         str(out_path),
     ]
     _run(transcode_cmd)
