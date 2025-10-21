@@ -539,6 +539,7 @@ def build_scene_response(session: Session, scene: Scene) -> SceneResponse:
         progressUpdatedAt=getattr(scene, "progress_updated_at", None),
         stateSummary=getattr(scene, "state_summary", None),
         contextVideoSeconds=getattr(scene, "context_video_seconds", None),
+        contextFileId=getattr(scene, "context_file_id", None),
     )
 
 
