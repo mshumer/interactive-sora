@@ -988,7 +988,7 @@ def render_scene_video(
 
             sample = _extract_generated_sample(operation)
             combined_path = tmp_dir_path / "veo_combined.mp4"
-            veo_download_content(api_key, sample, combined_path)
+            veo_download_content(client, sample, combined_path)
 
             clip_path = combined_path
             if parent_context_path is not None:
@@ -1478,34 +1478,6 @@ Return JSON with keys: scenario_display, veo_prompt, choices (3), choices_short 
 # === Veo Helpers ===
 
 
-def _upload_context_video(client, reference_video_path: Optional[Path]):
-    if reference_video_path is None or not reference_video_path.exists():
-        logger.debug("[veo] no context video to upload")
-        return None
-    try:
-        stat = reference_video_path.stat()
-        logger.info(
-            "[veo] uploading context video path=%s bytes=%s",
-            reference_video_path,
-            stat.st_size,
-        )
-        record = client.files.upload(
-            file=str(reference_video_path),
-            config=genai_types.UploadFileConfig(mime_type="video/mp4"),
-        )
-        if isinstance(record, str):
-            logger.debug("[veo] upload returned raw id=%s", record)
-            return client.files.get(name=record)
-        name = getattr(record, "name", None)
-        if name:
-            logger.debug("[veo] upload returned name=%s", name)
-            return client.files.get(name=name)
-        logger.warning("[veo] upload returned unexpected record=%s", record)
-        return record
-    except Exception as exc:  # pragma: no cover - upstream errors propagate
-        raise RuntimeError(f"Failed to upload context video to Gemini: {exc}") from exc
-
-
 def veo_create_video(
     api_key: str,
     veo_prompt: str,
@@ -1777,7 +1749,7 @@ def generate_scene_video(
     aspect_ratio: str,
     seconds: int,
     context_video: Optional[Path],
-) -> Tuple[str, Path, Path, Path, int]:
+) -> Tuple[str, Path, Path, Path, int, Optional[str]]:
     seconds = normalize_seconds(seconds)
 
     context_seconds = 0.0
@@ -1808,7 +1780,7 @@ def generate_scene_video(
 
     token = uuid.uuid4().hex
     combined_path = VIDEO_DIR / f"{token}_combined.mp4"
-    veo_download_content(api_key, sample, combined_path)
+    veo_download_content(client, sample, combined_path)
 
     clip_path = VIDEO_DIR / f"{token}.mp4"
     if context_video is not None:
@@ -1857,7 +1829,14 @@ def generate_scene_video(
         poster_path,
         combined_path,
     )
-    return operation_name, clip_path, poster_path, combined_path, context_file_id
+    return (
+        operation_name,
+        clip_path,
+        poster_path,
+        combined_path,
+        new_context_seconds,
+        context_file_id,
+    )
 
 
 
