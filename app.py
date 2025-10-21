@@ -89,14 +89,7 @@ GEMINI_API_BASE = os.environ.get(
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    "A multiverse adventure where shimmering portals splice iconic game-inspired realms together. "
-    "Our protagonist is the Courier, an agile dimension runner collecting chronoglyph shards that stabilize reality. "
-    "We begin inside the Nexus Gate, a concentric chamber housing three unlabelled portals:"
-    " one amber-glass gateway echoing with synth bass, one cerulean rune vortex crackling with arcane energy, and one obsidian aperture breathing neon steam."
-    " Each portal deposits the Courier into a distinct world—neon Vice City highways, rune-lit gothic battlegrounds, clockwork fantasy metropolises—"
-    "all remixing familiar vibes without naming trademarks. The Courier is guided by an AI companion, Luma, who tracks shard resonance."
-    " The stakes: close the Cataclysm Rift by assembling three legendary relics hidden across worlds;"
-    " each scene should propel the chase, reveal cross-world cause-and-effect, or introduce allies/enemies reacting to the Courier's interference."
+    ""
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
@@ -1653,18 +1646,21 @@ def extract_tail_segment(
         raise ValueError("seconds must be positive")
     if FFMPEG_BIN is None:
         raise RuntimeError("FFmpeg is required to trim Veo output but was not found.")
-    duration = total_duration if total_duration is not None else _video_duration_seconds(video_path)
-    baseline_start = (duration - seconds) if duration else 0.0
-    if context_offset is not None:
-        baseline_start = max(context_offset, baseline_start)
-    start_time = max(baseline_start, 0.0)
-    if duration is not None:
-        # Clamp inside the available media to avoid empty outputs when rounding errors occur.
-        start_time = min(start_time, max(duration - 0.05, 0.0))
-    safety_pad = 0.05
 
-    # Try the fast path first: stream copy with timestamps rebased for HTML5 players.
-    copy_cmd = [
+    duration = total_duration if total_duration is not None else _video_duration_seconds(video_path)
+    if duration is None:
+        duration = (context_offset or 0.0) + float(seconds)
+
+    # Determine when the new segment starts inside the stitched clip.
+    baseline_start = max(duration - float(seconds), 0.0)
+    if context_offset is not None:
+        baseline_start = max(min(context_offset, duration), baseline_start)
+
+    # Clamp within media bounds and pad slightly so we never underrun.
+    start_time = max(min(baseline_start, max(duration - 0.01, 0.0)), 0.0)
+    trim_length = max(min(duration - start_time, float(seconds) + 0.05), 0.05)
+
+    cmd = [
         FFMPEG_BIN,
         "-y",
         "-ss",
@@ -1672,38 +1668,7 @@ def extract_tail_segment(
         "-i",
         str(video_path),
         "-t",
-        f"{seconds + safety_pad:.3f}",
-        "-c",
-        "copy",
-        "-avoid_negative_ts",
-        "make_zero",
-        "-movflags",
-        "+faststart",
-        str(out_path),
-    ]
-
-    def _run(cmd: List[str]) -> None:
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    try:
-        _run(copy_cmd)
-        return out_path
-    except subprocess.CalledProcessError as exc:
-        logger.warning("[veo] ffmpeg copy trim failed exit=%s", exc.returncode)
-        if out_path.exists():
-            out_path.unlink(missing_ok=True)
-
-    # Fallback: re-encode the tail segment so we always emit a decodable clip.
-    transcode_start = max(start_time - 0.15, 0.0)
-    transcode_cmd = [
-        FFMPEG_BIN,
-        "-y",
-        "-ss",
-        f"{transcode_start:.3f}",
-        "-i",
-        str(video_path),
-        "-t",
-        f"{seconds + 0.35:.3f}",
+        f"{trim_length:.3f}",
         "-c:v",
         "libx264",
         "-preset",
@@ -1721,7 +1686,7 @@ def extract_tail_segment(
         "-shortest",
         str(out_path),
     ]
-    _run(transcode_cmd)
+    subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return out_path
 
 
