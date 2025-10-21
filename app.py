@@ -101,7 +101,19 @@ SCENE_TIMEOUT_SECONDS = int(os.environ.get("SCENE_TIMEOUT_SECONDS", "900"))
 WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"))
 CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "veo-shared-world")
 
-DEFAULT_PROMPT_GUIDANCE = BASE_PROMPT
+DEFAULT_PROMPT_GUIDANCE = (
+    "\n".join(
+        [
+            "Tone: Cinematic, gritty, high-adrenaline urban combat at dusk. Every scene emphasizes NYC landmarks or recognizable street-level details.",
+            "Movement: Focus on dynamic, first-person action—running, taking cover, firing, reloading—maintaining intensity and realism.",
+            "Environment: Depict NYC authentically but remixed by conflict (smoke, barricades, improvised covers, abandoned cars). Locations should reflect the route from Fidi toward the Upper West Side.",
+            "Objective: Clearly show directional progress toward the Upper West Side with landmarks or street signs indicating northward movement.",
+            "Allies & Foes: Encounters with rival groups, snipers, and unexpected combatants positioned strategically along the route. Highlight tactical maneuvers and exchanges of fire.",
+            "Hook: Each scene ends with a sudden escalation (ambush, unexpected ally arrival, environmental hazard) compelling the next immediate decision or action.",
+            "Checkpoint: Occasionally surface branching choices (alleys, rooftops, subway entrances) as immediate tactical decisions shaping the journey.",
+        ]
+    )
+)
 
 PROMPT_GUIDANCE = os.environ.get("WORLD_PROMPT_GUIDANCE", "").strip() or DEFAULT_PROMPT_GUIDANCE
 STATE_SUMMARY_MODEL = os.environ.get("STATE_SUMMARY_MODEL", "gpt-5-mini").strip()
