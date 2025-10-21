@@ -850,6 +850,7 @@ TASK: Summarise the evolving state using at most three bullets as instructed.
         return None
 
 
+
 def render_scene_video(
     world_id: str,
     path: str,
@@ -904,7 +905,6 @@ def render_scene_video(
             if stored_total is not None:
                 parent_context_seconds = float(stored_total)
             parent_context_file_id = getattr(parent_scene, "context_file_id", None)
-            parent_context_file_id = getattr(parent_scene, "context_file_id", None)
         else:
             logger.warning("[continuity] missing parent scene world=%s parent_path=%s", world_id, parent)
     if parent_context_path and parent_context_path.exists():
@@ -929,6 +929,10 @@ def render_scene_video(
         )
 
     client = _build_genai_client(api_key)
+    asset: Optional[StoredAsset] = None
+    new_context_seconds = DEFAULT_SECONDS
+    context_file_id: Optional[str] = None
+    uploaded_context_name: Optional[str] = None
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -944,6 +948,7 @@ def render_scene_video(
                 parent_context_seconds,
                 MAX_CONTEXT_SECONDS - parent_context_seconds,
             )
+
             reference_video_obj: Optional[genai_types.Video] = None
             if parent_context_file_id:
                 try:
@@ -998,58 +1003,61 @@ def render_scene_video(
             poster_path = tmp_dir_path / "veo_last_frame.jpg"
             extract_last_frame(combined_path, poster_path)
 
-        combined_duration = _video_duration_seconds(combined_path)
-        if combined_duration:
+            combined_duration = _video_duration_seconds(combined_path)
+            if combined_duration:
+                logger.info(
+                    "[veo] combined duration=%.2fs (prev %.2fs + %ss)",
+                    combined_duration,
+                    parent_context_seconds,
+                    DEFAULT_SECONDS,
+                )
+                new_context_seconds = int(math.ceil(combined_duration))
+            else:
+                new_context_seconds = int(math.ceil(parent_context_seconds + DEFAULT_SECONDS))
+                logger.warning(
+                    "[veo] combined duration probe failed; using fallback=%ss",
+                    new_context_seconds,
+                )
+
+            video_node = getattr(sample, "video", None)
+            if video_node is not None:
+                context_file_id = getattr(video_node, "name", None)
+
+            key_prefix = f"{world_id}/{path or 'root'}"
+            asset = storage_client.upload(
+                clip_path,
+                poster_path,
+                key_prefix=key_prefix,
+                context_video_path=combined_path,
+            )
             logger.info(
-                "[veo] combined duration=%.2fs (prev %.2fs + %ss)",
-                combined_duration,
-                parent_context_seconds,
-                DEFAULT_SECONDS,
+                "[veo] uploaded asset key_prefix=%s video=%s poster=%s context=%s",
+                key_prefix,
+                asset.video_url,
+                asset.poster_url,
+                asset.context_video_url,
             )
-            new_context_seconds = int(math.ceil(combined_duration))
-        else:
-            new_context_seconds = int(math.ceil(parent_context_seconds + DEFAULT_SECONDS))
-            logger.warning(
-                "[veo] combined duration probe failed; using fallback=%ss",
-                new_context_seconds,
+            logger.info(
+                "[veo] prepared outputs operation=%s clip=%s poster=%s combined=%s",
+                getattr(operation, "name", None),
+                asset.video_url,
+                asset.poster_url,
+                asset.context_video_url,
             )
-
-        video_node = getattr(sample, "video", None)
-        context_file_id = None
-        if video_node is not None:
-            context_file_id = getattr(video_node, "name", None)
-
-        key_prefix = f"{world_id}/{path or 'root'}"
-        asset = storage_client.upload(
-            clip_path,
-            poster_path,
-            key_prefix=key_prefix,
-            context_video_path=combined_path,
-        )
-        logger.info(
-            "[veo] uploaded asset key_prefix=%s video=%s poster=%s context=%s",
-            key_prefix,
-            asset.video_url,
-            asset.poster_url,
-            asset.context_video_url,
-        )
-        logger.info(
-            "[veo] prepared outputs operation=%s clip=%s poster=%s combined=%s",
-            getattr(operation, "name", None),
-            asset.video_url,
-            asset.poster_url,
-            asset.context_video_url,
-        )
-        return asset, new_context_seconds, context_file_id
     finally:
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
         try:
-            if 'uploaded_context_name' in locals() and uploaded_context_name is not None:
+            if uploaded_context_name is not None:
                 logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
                 client.files.delete(name=uploaded_context_name)
         except Exception:
             logger.debug("[veo] context file deletion skipped", exc_info=True)
+
+    if asset is None:
+        raise RuntimeError("Veo generation failed: no asset produced")
+    return asset, new_context_seconds, context_file_id
+
 
 
 def download_asset(stored_value: str, variant: str) -> Optional[Path]:
@@ -1742,6 +1750,7 @@ def extract_last_frame(video_path: Path, out_image_path: Path) -> Path:
     raise RuntimeError("Failed to extract last frame: OpenCV/FFmpeg unavailable or video unreadable.")
 
 
+
 def generate_scene_video(
     api_key: str,
     veo_prompt: str,
@@ -1749,7 +1758,7 @@ def generate_scene_video(
     aspect_ratio: str,
     seconds: int,
     context_video: Optional[Path],
-) -> Tuple[str, Path, Path, Path, int, Optional[str]]:
+) -> Tuple[str, Path, Path, Path, Optional[str]]:
     seconds = normalize_seconds(seconds)
 
     context_seconds = 0.0
@@ -1829,14 +1838,7 @@ def generate_scene_video(
         poster_path,
         combined_path,
     )
-    return (
-        operation_name,
-        clip_path,
-        poster_path,
-        combined_path,
-        new_context_seconds,
-        context_file_id,
-    )
+    return operation_name, clip_path, poster_path, combined_path, context_file_id
 
 
 
