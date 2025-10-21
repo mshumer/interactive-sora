@@ -101,19 +101,7 @@ SCENE_TIMEOUT_SECONDS = int(os.environ.get("SCENE_TIMEOUT_SECONDS", "900"))
 WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"))
 CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "veo-shared-world")
 
-DEFAULT_PROMPT_GUIDANCE = (
-    "\n".join(
-        [
-            "Tone: Cinematic, high-energy multiverse heist. Every shot should highlight a recognizable-but-remixed world feature (vehicles, creatures, tech).",
-            "Portals: Visualise swirling anomalies linking worlds. If a portal appears, show its activation, traversal, or aftermath in the same shot.",
-            "Momentum: Show large movements—dashing, driving, grappling, spell bursts—rather than static observation.",
-            "Quest Focus: We are chasing chronoglyph shards and the Cataclysm Rift. Each scene should reveal progress, a clue, or a complication tied to that quest.",
-            "Allies & Foes: Introduce colorful companions or antagonists from different worlds reacting to portals; show how their abilities influence the beat.",
-            "Hook: End with a striking twist (new world glimpsed, portal destabilising, relic reacting) that makes the next choice consequential.",
-            "Portal Hub: When at the Nexus Gate, surface three distinct unlabeled portals as the primary choices; once a world is entered, momentum should push forward until the player restarts.",
-        ]
-    )
-)
+DEFAULT_PROMPT_GUIDANCE = BASE_PROMPT
 
 PROMPT_GUIDANCE = os.environ.get("WORLD_PROMPT_GUIDANCE", "").strip() or DEFAULT_PROMPT_GUIDANCE
 STATE_SUMMARY_MODEL = os.environ.get("STATE_SUMMARY_MODEL", "gpt-5-mini").strip()
