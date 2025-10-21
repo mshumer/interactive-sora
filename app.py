@@ -983,15 +983,22 @@ def render_scene_video(
             combined_path = tmp_dir_path / "veo_combined.mp4"
             veo_download_content(client, sample, combined_path)
 
+            combined_duration = _video_duration_seconds(combined_path)
+
             clip_path = combined_path
             if parent_context_path is not None:
                 clip_path = tmp_dir_path / "veo_clip.mp4"
-                extract_tail_segment(combined_path, DEFAULT_SECONDS, clip_path)
+                extract_tail_segment(
+                    combined_path,
+                    DEFAULT_SECONDS,
+                    clip_path,
+                    total_duration=combined_duration,
+                    context_offset=parent_context_seconds,
+                )
 
             poster_path = tmp_dir_path / "veo_last_frame.jpg"
             extract_last_frame(combined_path, poster_path)
 
-            combined_duration = _video_duration_seconds(combined_path)
             if combined_duration:
                 logger.info(
                     "[veo] combined duration=%.2fs (prev %.2fs + %ss)",
@@ -1634,13 +1641,26 @@ def veo_download_content(client, sample: Any, out_path: Path) -> Path:
     return out_path
 
 
-def extract_tail_segment(video_path: Path, seconds: int, out_path: Path) -> Path:
+def extract_tail_segment(
+    video_path: Path,
+    seconds: int,
+    out_path: Path,
+    *,
+    total_duration: Optional[float] = None,
+    context_offset: Optional[float] = None,
+) -> Path:
     if seconds <= 0:
         raise ValueError("seconds must be positive")
     if FFMPEG_BIN is None:
         raise RuntimeError("FFmpeg is required to trim Veo output but was not found.")
-    duration = _video_duration_seconds(video_path)
-    start_time = max((duration - seconds) if duration else 0.0, 0.0)
+    duration = total_duration if total_duration is not None else _video_duration_seconds(video_path)
+    baseline_start = (duration - seconds) if duration else 0.0
+    if context_offset is not None:
+        baseline_start = max(context_offset, baseline_start)
+    start_time = max(baseline_start, 0.0)
+    if duration is not None:
+        # Clamp inside the available media to avoid empty outputs when rounding errors occur.
+        start_time = min(start_time, max(duration - 0.05, 0.0))
     safety_pad = 0.05
 
     # Try the fast path first: stream copy with timestamps rebased for HTML5 players.
@@ -1828,6 +1848,8 @@ def generate_scene_video(
     combined_path = VIDEO_DIR / f"{token}_combined.mp4"
     veo_download_content(client, sample, combined_path)
 
+    combined_duration = _video_duration_seconds(combined_path)
+
     clip_path = VIDEO_DIR / f"{token}.mp4"
     if context_video is not None:
         logger.debug(
@@ -1836,7 +1858,13 @@ def generate_scene_video(
             combined_path,
             clip_path,
         )
-        extract_tail_segment(combined_path, seconds, clip_path)
+        extract_tail_segment(
+            combined_path,
+            seconds,
+            clip_path,
+            total_duration=combined_duration,
+            context_offset=context_seconds,
+        )
     else:
         shutil.copy2(combined_path, clip_path)
 
@@ -1845,7 +1873,6 @@ def generate_scene_video(
 
     operation_name = getattr(operation, "name", None) or token
 
-    combined_duration = _video_duration_seconds(combined_path)
     if combined_duration:
         logger.info(
             "[veo] combined duration for preset op=%s is %.2fs",
