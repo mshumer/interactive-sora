@@ -738,7 +738,13 @@ function playInspectorVideo() {
   inspectorVideo.src = node.videoUrl;
   inspectorVideo.poster = node.posterUrl || "";
   inspectorVideo.muted = false;
-  inspectorVideo.play().catch(() => inspectorVideo.load());
+  const playPromise = inspectorVideo.play();
+  if (playPromise && typeof playPromise.then === "function") {
+    playPromise.catch(() => {
+      inspectorVideo.load();
+      inspectorVideo.play().catch(() => {/* swallow */});
+    });
+  }
 }
 
 function openModalForSelected() {
@@ -757,7 +763,13 @@ function openModalForSelected() {
     ${node.contextVideoUrl ? ' · <a href="' + node.contextVideoUrl + '" target="_blank" rel="noopener" style="color: var(--accent);">Full continuity</a>' : ''}
   `;
   previewOverlay.classList.add("active");
-  previewVideo.play().catch(() => previewVideo.load());
+  const playPromise = previewVideo.play();
+  if (playPromise && typeof playPromise.then === "function") {
+    playPromise.catch(() => {
+      previewVideo.load();
+      previewVideo.play().catch(() => {/* swallow */});
+    });
+  }
   document.addEventListener("keydown", escListener);
 }
 
