@@ -1225,7 +1225,12 @@ Rules:
    - Start in motion—skip drawn-out establishing frames. Hit the key moment within the first 3 seconds and carry energy through the remainder.
    - End with a fresh reveal, reaction, or consequence that sets up the next decision.
 
-7) Output strictly JSON. No markdown, no commentary, no code fences.
+7) Momentum & sensory cues:
+   - Keep urgency palpable: layer in aggressive verbs, snap decisions, sprinting chases, collisions, or close calls every beat.
+   - Call out propulsive audio cues (sirens, ricochets, rotor chop, panicked shouts) and environmental FX that heighten tension.
+   - Ensure the Prompt pairs kinetic camera moves with the protagonist’s bodily motion so viewers feel a continuous forward drive.
+
+8) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
 
 
