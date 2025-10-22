@@ -658,6 +658,10 @@ function switchView(view) {
 
 function handlePointerDown(event) {
   if (event.button !== 0) return;
+  const target = event.target.closest && event.target.closest(".tree-node");
+  if (target) {
+    return;
+  }
   state.drag.active = true;
   state.drag.id = event.pointerId;
   state.drag.startX = event.clientX;
@@ -688,6 +692,9 @@ function handlePointerUp(event) {
 }
 
 function handleWheel(event) {
+  if (event.ctrlKey) {
+    return;
+  }
   event.preventDefault();
   const rect = canvasContainer.getBoundingClientRect();
   const offsetX = event.clientX - rect.left;
@@ -727,6 +734,7 @@ function playInspectorVideo() {
     setFlash("No video for this node", "error");
     return;
   }
+  inspectorVideo.crossOrigin = "anonymous";
   inspectorVideo.src = node.videoUrl;
   inspectorVideo.poster = node.posterUrl || "";
   inspectorVideo.muted = false;
@@ -740,6 +748,7 @@ function openModalForSelected() {
     setFlash("No video to preview", "error");
     return;
   }
+  previewVideo.crossOrigin = "anonymous";
   previewVideo.src = node.videoUrl;
   previewVideo.poster = node.posterUrl || "";
   previewTitle.textContent = node.path || "Root";
@@ -770,8 +779,8 @@ function escListener(event) {
 function initEvents() {
   svg.addEventListener("pointerdown", handlePointerDown);
   svg.addEventListener("pointermove", handlePointerMove);
-  svg.addEventListener("pointerup", handlePointerUp);
-  svg.addEventListener("pointerleave", handlePointerUp);
+  svg.addEventListener("pointerup", handlePointerUp, true);
+  svg.addEventListener("pointerleave", handlePointerUp, true);
   svg.addEventListener("wheel", handleWheel, { passive: false });
   svg.addEventListener("dblclick", (event) => event.preventDefault());
 
@@ -786,7 +795,10 @@ function initEvents() {
   prefixInput.addEventListener("change", () => loadTree());
   statusFilter.addEventListener("change", () => loadTree());
 
-  canvasContainer.addEventListener("click", () => {
+  canvasContainer.addEventListener("click", (event) => {
+    if (event.target.closest && event.target.closest(".tree-node")) {
+      return;
+    }
     clearSelection();
     inspectorTitle.textContent = "Select a node";
     inspectorStatus.style.display = "none";
