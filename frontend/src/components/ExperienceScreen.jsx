@@ -132,6 +132,10 @@ const ExperienceScreen = ({
   const choicesStatus = activeScene?.choicesStatus || [];
   const isQueued = activeScene?.status === "queued";
   const progress = typeof activeScene?.progress === "number" ? activeScene.progress : null;
+  const [simulatedProgress, setSimulatedProgress] = useState(null);
+  const simFrameRef = useRef(null);
+  const simStartRef = useRef(0);
+  const simDurationRef = useRef(45000);
 
   const canChoose = Boolean(activeScene && hasChoices && !isGenerating);
 
@@ -212,6 +216,49 @@ const ExperienceScreen = ({
     videoElement.addEventListener("canplay", handleCanPlay);
   };
 
+  useEffect(() => {
+    const hasNumericProgress = typeof progress === "number";
+    const shouldSimulate = !hasNumericProgress && (isQueued || isGenerating);
+
+    if (!shouldSimulate) {
+      if (simFrameRef.current !== null) {
+        cancelAnimationFrame(simFrameRef.current);
+        simFrameRef.current = null;
+      }
+      setSimulatedProgress(null);
+      return;
+    }
+
+    if (simFrameRef.current !== null) {
+      return;
+    }
+
+    const duration = 40000 + Math.random() * 10000;
+    simDurationRef.current = duration;
+    simStartRef.current = performance.now();
+    setSimulatedProgress(0);
+
+    const step = (timestamp) => {
+      const elapsed = timestamp - simStartRef.current;
+      const percent = Math.min(100, (elapsed / simDurationRef.current) * 100);
+      setSimulatedProgress(percent);
+      if (percent >= 100) {
+        simFrameRef.current = null;
+        return;
+      }
+      simFrameRef.current = requestAnimationFrame(step);
+    };
+
+    simFrameRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (simFrameRef.current !== null) {
+        cancelAnimationFrame(simFrameRef.current);
+        simFrameRef.current = null;
+      }
+    };
+  }, [progress, isQueued, isGenerating, activeScene?.path, activeScene?.status]);
+
   const handleTimeUpdate = () => {
     if (choicesRevealActive) return;
     const videoElement = videoRef.current;
@@ -223,6 +270,9 @@ const ExperienceScreen = ({
       setChoicesRevealActive(true);
     }
   };
+
+  const mergedProgress = typeof progress === "number" ? progress : simulatedProgress;
+  const displayProgress = typeof mergedProgress === "number" ? Math.min(100, mergedProgress) : null;
 
   const showLoader =
     hasEnteredExperience && (isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading));
@@ -249,7 +299,9 @@ const ExperienceScreen = ({
       case "ready":
         return "Scene ready";
       case "queued":
-        return typeof progress === "number" ? `Generating… ${progress}%` : "Another explorer is generating this scene";
+        return typeof displayProgress === "number"
+          ? `Generating… ${Math.round(displayProgress)}%`
+          : "Another explorer is generating this scene";
       case "failed":
         return activeScene.failureDetail || "Generation failed";
       default:
@@ -388,14 +440,14 @@ const ExperienceScreen = ({
             <div className="loading-core" />
             <p>
               {isQueued
-                ? typeof progress === "number"
-                  ? `Generating… ${progress}%`
+                ? typeof displayProgress === "number"
+                  ? `Generating… ${Math.round(displayProgress)}%`
                   : "Generating scene…"
                 : isGenerating
                 ? "Forging the next sequence…"
                 : "Preparing scene…"}
             </p>
-            {typeof progress === "number" && <ProgressBar progress={progress} />}
+            {typeof displayProgress === "number" && <ProgressBar progress={displayProgress} />}
           </div>
         )}
 
@@ -431,7 +483,7 @@ const ProgressBar = ({ progress }) => {
       <div className="progress-bar-track">
         <div className="progress-bar-fill" style={{ width: `${value}%` }} />
       </div>
-      <span className="progress-label">{value}%</span>
+      <span className="progress-label">{Math.round(value)}%</span>
     </div>
   );
 };
