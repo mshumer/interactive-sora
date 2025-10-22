@@ -92,7 +92,7 @@ DEFAULT_WORLD_BASE_PROMPT = (
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
-DEFAULT_PLANNER_MODEL = "models/gemini-2.5-pro-latest"
+DEFAULT_PLANNER_MODEL = "gemini-2.5-pro"
 PLANNER_MODEL = os.environ.get("PLANNER_MODEL", DEFAULT_PLANNER_MODEL)
 VEO_MODEL = os.environ.get("VEO_MODEL", "veo-3.1-fast-generate-preview")
 VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1280x720")
@@ -1232,19 +1232,24 @@ Rules:
 
 def responses_create(api_key: str, model: str, instructions: str, user_input: str) -> str:
     normalized_model = (model or "").strip() or DEFAULT_PLANNER_MODEL
-    if "/" not in normalized_model:
-        normalized_model = f"models/{normalized_model}" if not normalized_model.startswith("models/") else normalized_model
-    elif not normalized_model.startswith("models/") and normalized_model.count("/") == 1:
-        normalized_model = f"models/{normalized_model.split('/', 1)[1]}"
 
-    combined_prompt = instructions.rstrip() + "\n\n" + user_input.strip()
+    contents = [{"role": "user", "parts": [{"text": user_input.strip()}]}]
+    config = None
+    if instructions.strip():
+        if genai_types is None:
+            raise RuntimeError("Gemini client missing type definitions; reinstall google-genai>=0.5.0")
+        config = genai_types.GenerateContentConfig(system_instruction=instructions.strip())
 
     client = _build_genai_client(api_key)
+    kwargs: Dict[str, Any] = {
+        "model": normalized_model,
+        "contents": contents,
+    }
+    if config is not None:
+        kwargs["config"] = config
+
     try:
-        response = client.models.generate_content(
-            model=normalized_model,
-            contents=[{"role": "user", "parts": [{"text": combined_prompt}]}],
-        )
+        response = client.models.generate_content(**kwargs)
     except Exception as exc:
         raise RuntimeError(f"Gemini text generation failed: {exc}") from exc
 

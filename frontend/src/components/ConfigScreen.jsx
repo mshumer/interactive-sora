@@ -26,7 +26,7 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
   const [form, setForm] = useState({
     plannerApiKey: "",
     videoApiKey: "",
-    plannerModel: "models/gemini-2.5-pro-latest",
+    plannerModel: "gemini-2.5-pro",
     veoModel: "veo-3.1-generate-preview",
     videoSize: "1280x720",
     basePrompt:
@@ -162,7 +162,7 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
                     name="plannerModel"
                     value={form.plannerModel}
                     onChange={handleChange}
-                    placeholder="models/gemini-2.5-pro-latest"
+                    placeholder="gemini-2.5-pro"
                     required
                   />
                 </label>
