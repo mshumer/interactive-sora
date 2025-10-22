@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Story Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: dark light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --bg: #0b1018;
+      --surface: #111727;
+      --surface-2: #151d30;
+      --text: #f6f8fa;
+      --muted: rgba(246, 248, 250, 0.65);
+      --accent: #3d8bfd;
+      --danger: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(165deg, var(--bg), #060a11 55%, #05070c 100%);
+      color: var(--text);
+    }
+    header {
+      padding: 24px 40px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw, 2rem);
+    }
+    .controls {
+      padding: 12px 40px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+    }
+    label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    input[type="text"] {
+      padding: 0.55rem 0.7rem;
+      border-radius: 10px;
+      border: 1px solid rgba(61, 139, 253, 0.35);
+      background: rgba(17, 23, 39, 0.75);
+      color: inherit;
+      min-width: 220px;
+    }
+    button, .tonal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0.55rem 0.9rem;
+      font-size: 0.95rem;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(61, 139, 253, 0.95), rgba(111, 66, 193, 0.95));
+      color: #fff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    button:hover,
+    .tonal:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(61, 139, 253, 0.35);
+    }
+    .tonal {
+      background: rgba(17, 25, 39, 0.85);
+      color: var(--text);
+      border: 1px solid rgba(61, 139, 253, 0.3);
+    }
+    .danger {
+      background: linear-gradient(135deg, rgba(255, 107, 107, 0.95), #ff4d79);
+    }
+    main {
+      padding: 12px 40px 60px;
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 1100px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+    .panel {
+      background: rgba(17, 25, 39, 0.78);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 20px 60px rgba(5, 9, 17, 0.55);
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    thead {
+      background: rgba(255, 255, 255, 0.04);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.75rem;
+    }
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    tbody tr:hover {
+      background: rgba(61, 139, 253, 0.08);
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      text-transform: capitalize;
+      background: rgba(61, 139, 253, 0.12);
+    }
+    .status-pill[data-status="ready"] { background: rgba(66, 207, 151, 0.18); }
+    .status-pill[data-status="failed"] { background: rgba(255, 107, 107, 0.18); }
+    .status-pill[data-status="queued"] { background: rgba(246, 173, 85, 0.2); }
+    .status-pill[data-status="pending"] { background: rgba(96, 125, 139, 0.2); }
+    .muted {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .detail {
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .detail h2 {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .children-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .child-tile {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 10px 12px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .flash {
+      margin: 0 40px 16px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(61, 139, 253, 0.15);
+      color: var(--text);
+      display: none;
+    }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 8, 15, 0.75);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      z-index: 20;
+    }
+    .overlay.active { display: flex; }
+    .modal {
+      width: min(960px, 90vw);
+      background: rgba(8, 12, 20, 0.95);
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    video {
+      width: 100%;
+      max-height: 70vh;
+      border-radius: 12px;
+      background: #000;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .modal-header button {
+      padding: 0.35rem 0.7rem;
+      font-size: 0.85rem;
+      background: rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Shared World Admin</h1>
+      <p class="muted">Manage generated branches, preview clips, and recycle paths.</p>
+    </div>
+    <form method="post" action="/admin/logout">
+      <button type="submit" class="tonal">Log out</button>
+    </form>
+  </header>
+
+  <div class="controls">
+    <label>
+      Path prefix
+      <input id="prefix-input" type="text" placeholder="e.g. 0/1" />
+    </label>
+    <button type="button" id="load-btn">Load</button>
+    <button type="button" id="reset-root" class="danger">Reset entire world</button>
+  </div>
+
+  <div id="flash" class="flash"></div>
+
+  <main>
+    <section class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:20%">Path</th>
+            <th style="width:12%">Status</th>
+            <th style="width:18%">Updated</th>
+            <th style="width:20%">Media</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="scene-table"></tbody>
+      </table>
+    </section>
+
+    <aside class="panel detail">
+      <div>
+        <h2 id="detail-title">Select a path</h2>
+        <p id="detail-meta" class="muted">Preview scene details to inspect choices, storage footprint, and branch status.</p>
+      </div>
+      <div id="detail-body" class="children-list"></div>
+      <div id="detail-summary" class="muted"></div>
+    </aside>
+  </main>
+
+  <div id="preview-overlay" class="overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="preview-title">Preview</h3>
+        <button type="button" id="close-preview">Close</button>
+      </div>
+      <video id="preview-video" controls preload="none" poster="" playsinline></video>
+      <div class="muted" id="preview-links"></div>
+    </div>
+  </div>
+
+  <script>
+    const prefixInput = document.getElementById("prefix-input");
+    const tableBody = document.getElementById("scene-table");
+    const flash = document.getElementById("flash");
+    const detailTitle = document.getElementById("detail-title");
+    const detailBody = document.getElementById("detail-body");
+    const detailSummary = document.getElementById("detail-summary");
+    const detailMeta = document.getElementById("detail-meta");
+    const previewOverlay = document.getElementById("preview-overlay");
+    const previewVideo = document.getElementById("preview-video");
+    const previewLinks = document.getElementById("preview-links");
+    const closePreviewButton = document.getElementById("close-preview");
+
+    const state = {
+      scenes: [],
+    };
+
+    function setFlash(message, flavor = "info") {
+      if (!message) {
+        flash.style.display = "none";
+        flash.textContent = "";
+        return;
+      }
+      flash.textContent = message;
+      flash.style.background = flavor === "error" ? "rgba(255,107,107,0.18)" : "rgba(61,139,253,0.18)";
+      flash.style.display = "block";
+      setTimeout(() => {
+        flash.style.display = "none";
+      }, 4000);
+    }
+
+    async function fetchJSON(url, options = {}) {
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json",
+          ...options.headers,
+        },
+        ...options,
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.detail || `Request failed (${response.status})`);
+      }
+      return response.json();
+    }
+
+    function formatDate(value) {
+      if (!value) return "—";
+      try {
+        const d = new Date(value);
+        return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+      } catch (err) {
+        return value;
+      }
+    }
+
+    function renderTable(items) {
+      tableBody.innerHTML = "";
+      if (!items.length) {
+        const row = document.createElement("tr");
+        row.innerHTML = '<td colspan="5" style="padding:32px 16px; text-align:center; color: var(--muted);">No scenes found for this prefix.</td>';
+        tableBody.appendChild(row);
+        return;
+      }
+
+      for (const scene of items) {
+        const row = document.createElement("tr");
+        const status = scene.status || "unknown";
+        const videoAvailable = !!scene.videoUrl;
+        row.innerHTML = `
+          <td><button class="tonal" data-path="${scene.path}" type="button">${scene.path || '<root>'}</button></td>
+          <td><span class="status-pill" data-status="${status}">${status}</span></td>
+          <td>${formatDate(scene.updatedAt)}</td>
+          <td>
+            ${videoAvailable ? '<button type="button" class="tonal" data-preview="' + scene.path + '">Preview</button>' : '<span class="muted">No video</span>'}
+          </td>
+          <td>
+            <button type="button" class="tonal" data-inspect="${scene.path}">Inspect</button>
+            <button type="button" class="danger" data-reset="${scene.path}">Reset</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      }
+    }
+
+    function openPreview(scene) {
+      if (!scene.videoUrl) {
+        setFlash("No video available for this scene", "error");
+        return;
+      }
+      previewVideo.pause();
+      previewVideo.src = scene.videoUrl;
+      if (scene.posterUrl) {
+        previewVideo.poster = scene.posterUrl;
+      }
+      previewLinks.innerHTML = `
+        <a href="${scene.videoUrl}" target="_blank" rel="noopener" style="color: var(--accent);">Open video in new tab</a>
+        ${scene.contextVideoUrl ? ' · <a href="' + scene.contextVideoUrl + '" target="_blank" rel="noopener" style="color: var(--accent);">Full continuity</a>' : ''}
+      `;
+      previewOverlay.classList.add("active");
+      previewVideo.play().catch(() => previewVideo.load());
+      document.addEventListener("keydown", escListener);
+    }
+
+    function closePreview() {
+      previewOverlay.classList.remove("active");
+      previewVideo.pause();
+      previewVideo.src = "";
+      previewVideo.poster = "";
+      previewLinks.textContent = "";
+      document.removeEventListener("keydown", escListener);
+    }
+
+    function escListener(event) {
+      if (event.key === "Escape") {
+        closePreview();
+      }
+    }
+
+    async function loadScenes() {
+      try {
+        const prefix = prefixInput.value.trim();
+        const data = await fetchJSON(`/admin/api/scenes?prefix=${encodeURIComponent(prefix)}`);
+        state.scenes = data.items;
+        renderTable(state.scenes);
+        setFlash(`Loaded ${data.items.length} of ${data.total} scene(s).`);
+      } catch (error) {
+        setFlash(error.message, "error");
+      }
+    }
+
+    async function loadDetails(path) {
+      try {
+        const targetPath = path || "";
+        const detail = await fetchJSON(`/admin/api/scene?path=${encodeURIComponent(targetPath)}`);
+        detailTitle.textContent = targetPath ? `Path ${targetPath}` : "Root scene";
+        detailMeta.textContent = detail.scene.scenarioDisplay || "No scenario description stored.";
+        detailSummary.textContent = `Storage footprint: ${(detail.storageBytes / (1024 * 1024)).toFixed(2)} MiB · Choices: ${(detail.scene.choices || []).length || 0}`;
+        detailBody.innerHTML = "";
+        for (const child of detail.children) {
+          const div = document.createElement("div");
+          div.className = "child-tile";
+          div.innerHTML = `<strong>${child.path}</strong><span class="muted">${child.status}</span>`;
+          detailBody.appendChild(div);
+        }
+      } catch (error) {
+        setFlash(error.message, "error");
+      }
+    }
+
+    async function performReset(path) {
+      const label = path ? `path ${path}` : "the entire world";
+      let confirmMessage = `Delete ${label}? This removes all clips, metrics, and scene records for this branch.`;
+      try {
+        const detail = await fetchJSON(`/admin/api/scene?path=${encodeURIComponent(path || "")}`);
+        const bytes = (detail.storageBytes / (1024 * 1024)).toFixed(2);
+        confirmMessage += `\n\nPreview: ${detail.scene.videoUrl ? 'Video exists' : 'No video'} · Storage ≈ ${bytes} MiB.`;
+      } catch (error) {
+        // Ignore detail errors (scene may not exist)
+      }
+
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+
+      try {
+        await fetchJSON("/admin/api/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: path || "", inclusive: true }),
+        });
+        setFlash(`Deleted ${label}.`);
+        await loadScenes();
+        if (!path) {
+          detailTitle.textContent = "Select a path";
+          detailBody.innerHTML = "";
+          detailSummary.textContent = "";
+          detailMeta.textContent = "Preview scene details to inspect choices, storage footprint, and branch status.";
+        }
+      } catch (error) {
+        setFlash(error.message, "error");
+      }
+    }
+
+    document.getElementById("load-btn").addEventListener("click", () => loadScenes());
+    document.getElementById("reset-root").addEventListener("click", () => performReset(""));
+    closePreviewButton.addEventListener("click", closePreview);
+    previewOverlay.addEventListener("click", (event) => {
+      if (event.target === previewOverlay) {
+        closePreview();
+      }
+    });
+
+    tableBody.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      const path = button.dataset.path ?? button.dataset.preview ?? button.dataset.reset ?? button.dataset.inspect ?? "";
+      if (button.dataset.preview !== undefined) {
+        const scene = state.scenes.find((s) => s.path === button.dataset.preview);
+        if (scene) openPreview(scene);
+      } else if (button.dataset.path !== undefined) {
+        loadDetails(path);
+      } else if (button.dataset.reset !== undefined) {
+        performReset(path);
+      } else if (button.dataset.inspect !== undefined) {
+        loadDetails(path);
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadScenes();
+    });
+  </script>
+</body>
+</html>

@@ -45,7 +45,7 @@ Base = declarative_base()
 
 
 def init_db() -> None:
-    from models import Scene, SceneMetric  # noqa: F401 - ensure metadata is registered
+    from models import AdminSecret, Scene, SceneMetric  # noqa: F401 - ensure metadata is registered
 
     Base.metadata.create_all(bind=engine)
     _ensure_schema()

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: dark light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d1117;
+      color: #f0f6fc;
+    }
+    .card {
+      width: min(360px, 90vw);
+      padding: 32px 28px;
+      border-radius: 16px;
+      background: rgba(13, 17, 23, 0.88);
+      border: 1px solid rgba(240, 246, 252, 0.1);
+      box-shadow: 0 20px 60px rgba(12, 18, 27, 0.5);
+    }
+    h1 {
+      font-size: 1.6rem;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 1.2rem;
+      color: rgba(240, 246, 252, 0.7);
+    }
+    label {
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      font-size: 1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(240, 246, 252, 0.2);
+      background: rgba(13, 17, 23, 0.6);
+      color: inherit;
+    }
+    button {
+      width: 100%;
+      margin-top: 1.2rem;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #3d8bfd, #6f42c1);
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 30px rgba(61, 139, 253, 0.35);
+    }
+    .error {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 10px;
+      background: rgba(255, 77, 79, 0.12);
+      color: #ff6b6b;
+      font-size: 0.9rem;
+    }
+    .hint {
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: rgba(240, 246, 252, 0.55);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Admin Access</h1>
+    <p>Enter the admin password to manage story branches.</p>
+    <form method="post" action="/admin/login">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+      <button type="submit">Sign in</button>
+    </form>
+    {% if login_error %}
+    <div class="error">{{ login_error }}</div>
+    {% endif %}
+    <div class="hint">Use <code>python tools/set_admin_password.py</code> to set or update the password.</div>
+  </main>
+</body>
+</html>

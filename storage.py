@@ -189,10 +189,18 @@ class LocalStorageClient(StorageClient):
         )
 
     def delete(self, key_prefix: str) -> None:
-        for suffix in (".mp4", ".jpg", "__context.mp4"):
-            candidate = (self._base_dir / Path(key_prefix)).with_suffix(suffix)
-            if candidate.exists():
+        key_path = Path(key_prefix)
+        base = self._base_dir / key_path
+        targets = [
+            base.with_suffix(".mp4"),
+            base.with_suffix(".jpg"),
+            base.with_name(key_path.name + "__context").with_suffix(".mp4"),
+        ]
+        for candidate in targets:
+            try:
                 candidate.unlink(missing_ok=True)
+            except FileNotFoundError:
+                continue
 
     def resolve_url(self, stored_value: str, *, variant: str) -> str:
         if stored_value.startswith("http://") or stored_value.startswith("https://"):

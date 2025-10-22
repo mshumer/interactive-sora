@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import uuid
 
 import requests
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, validator
@@ -41,6 +41,7 @@ from models import (
     split_path,
 )
 from storage import LocalStorageClient, StoredAsset, build_storage_client
+from admin import router as admin_router
 
 try:  # pragma: no cover - optional dependency for Veo
     from google import genai  # type: ignore
@@ -195,6 +196,21 @@ app.add_middleware(
 
 if isinstance(storage_client, LocalStorageClient):
     app.mount("/storage", StaticFiles(directory=storage_client.base_dir), name="storage")
+
+app.include_router(admin_router)
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=()",
+    )
+    return response
 
 
 class SceneResponse(BaseModel):

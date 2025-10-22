@@ -106,3 +106,11 @@ def last_choice_index(path: str) -> Optional[int]:
     if not parts:
         return None
     return parts[-1]
+
+
+class AdminSecret(Base):
+    __tablename__ = "admin_secret"
+
+    id = Column(Integer, primary_key=True, default=1)
+    password_hash = Column(String(512), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
