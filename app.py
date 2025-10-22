@@ -1174,7 +1174,7 @@ Rules:
 1) The 'veo_prompt' must be the exact text we send to Veo 3.1 via the Gemini API.
    - Include a line: "Context (not visible in video, only for AI guidance): ..." to carry forward continuity and constraints.
    - Include a line: "Prompt: ..." with concrete, cinematic directions (camera, subject, motion, lighting).
-   - Keep 'Prompt' focused on the next 8-second beat that will be appended to the existing footage.
+   - Keep 'Prompt' focused on the next 8-second beat appended to existing footage.
    - Assume the engine feeds Veo the full prior video, so design seamless momentum across cuts (matching motion, camera, props).
 
 2) Safety & platform constraints (strict):
@@ -1194,10 +1194,14 @@ Rules:
    - Provide a matching `choices_short` array: same order, each entry <= 12 words, written as an imperative teaser the player reads in the UI.
    - Aim for options that open visibly different paths (new discoveries, escalations, or dramatic reactions); avoid three small variations of the same move.
 
-5) Multiverse context:
-   - Portals can appear, destabilise, or be traversed in any scene. Highlight iconic world mashups (futuristic vehicles vs. dark fantasy adversaries, etc.) without naming trademarks.
-   - Tie choices to the chronoglyph shard hunt and the Cataclysm Rift stakes—progress, setbacks, or intel should be obvious on-screen.
-   - Allies/enemies from other worlds should react believably to cross-world physics or tech clashes.
+5) Scenario essentials (aligned to BASE_PROMPT and PROMPT_GUIDANCE):
+   - Tone: Cinematic, gritty, high-adrenaline urban combat at dusk. Scenes emphasize NYC landmarks or recognizable street-level details.
+   - Movement: Dynamic, first-person action (running, taking cover, firing, reloading), intensity, and realism maintained.
+   - Environment: Authentic but conflict-remixed NYC (smoke, barricades, improvised cover, abandoned vehicles). Locations reflect the route from FiDi toward Upper West Side.
+   - Objective: Clearly show directional progress northward toward the Upper West Side, using landmarks or street signs.
+   - Allies & Foes: Rival operatives, snipers, unexpected combatants strategically positioned. Highlight tactical maneuvers and exchanges of fire.
+   - Hook: End scenes with sudden escalations (ambush, unexpected ally arrival, environmental hazard), compelling immediate next actions.
+   - Checkpoint: Occasionally provide branching tactical decisions (alleys, rooftops, subway entrances) shaping journey and outcomes.
 
 6) Pacing & shot design:
    - Each 8-second beat must deliver a complete moment (setup → escalation → visible outcome) that meaningfully changes the situation.
@@ -1206,6 +1210,7 @@ Rules:
 
 7) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
+
 
 
 def responses_create(api_key: str, model: str, instructions: str, user_input: str) -> str:
