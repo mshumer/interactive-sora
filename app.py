@@ -1190,8 +1190,12 @@ Your job:
 Rules:
 1) The 'veo_prompt' must be the exact text we send to Veo 3.1 via the Gemini API.
    - Include a line: "Context (not visible in video, only for AI guidance): ..." to carry forward continuity and constraints.
-   - Include a line: "Prompt: ..." with concrete, cinematic directions (camera, subject, motion, lighting).
-   - Keep 'Prompt' focused on the next 8-second beat appended to existing footage.
+   - Follow with four punchy lines in this order, using present-tense fragments packed with visceral detail:
+       * "Action: ..." (describe high-speed physical beats; layer in collisions, dodges, gear reloads, sprinting bursts, or brutal close-quarters maneuvers).
+       * "Camera: ..." (specify aggressive moves—handheld surges, whip pans, over-the-shoulder rushes, or drone dives tracking the Courier’s momentum).
+       * "Audio: ..." (call out adrenaline-boosting sound cues such as ricochets, rotor chop, sirens, shouted commands, synth pulses, or guttural breaths).
+       * "FX: ..." (spotlight sparks, muzzle flashes, rain spray, steam bursts, embers, neon bloom, particle trails).
+   - Keep each line compact (≈25 words max) and dense with concrete verbs and sensory hooks.
    - Assume the engine feeds Veo the full prior video, so design seamless momentum across cuts (matching motion, camera, props).
 
 2) Safety & platform constraints (strict):
@@ -1209,7 +1213,8 @@ Rules:
    - Make each option feasible in the next short shot, and clearly different in intent.
    - Keep each entry in `choices` descriptive yet punchy (<= 22 words) to guide planning and video prompts.
    - Provide a matching `choices_short` array: same order, each entry <= 12 words, written as an imperative teaser the player reads in the UI.
-   - Aim for options that open visibly different paths (new discoveries, escalations, or dramatic reactions); avoid three small variations of the same move.
+   - Each option must pivot the mission in a dramatically different direction (e.g., vertical rooftop assault vs. underground subway ambush vs. commandeering a vehicle) and highlight a unique tactical trade-off.
+   - Weigh risk/reward in the wording (high-risk/high-reward, stealthy but slow, collateral-heavy diversion) so players instantly sense stakes.
 
 5) Scenario essentials (aligned to BASE_PROMPT and PROMPT_GUIDANCE):
    - Tone: Cinematic, gritty, high-adrenaline urban combat at dusk. Scenes emphasize NYC landmarks or recognizable street-level details.
@@ -1227,10 +1232,13 @@ Rules:
 
 7) Momentum & sensory cues:
    - Keep urgency palpable: layer in aggressive verbs, snap decisions, sprinting chases, collisions, or close calls every beat.
-   - Call out propulsive audio cues (sirens, ricochets, rotor chop, panicked shouts) and environmental FX that heighten tension.
-   - Ensure the Prompt pairs kinetic camera moves with the protagonist’s bodily motion so viewers feel a continuous forward drive.
+   - Thread in micro-stakes (e.g., dwindling ammo, civilians in the crossfire, rival squads closing in) so tension keeps rising.
+   - Ensure "Action", "Camera", "Audio", and "FX" lines braid together—every camera move should amplify the physical motion and soundscape.
 
-8) Output strictly JSON. No markdown, no commentary, no code fences.
+8) Scenario_display tone:
+   - Narration should read like a breathless field report with sensory overload; finish with an escalating cliffhanger that begs the player to choose fast.
+
+9) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
 
 
