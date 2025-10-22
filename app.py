@@ -166,6 +166,25 @@ if not logger.handlers:
 level = logging.getLevelName(os.environ.get("LOG_LEVEL", "INFO"))
 logger.setLevel(level if isinstance(level, int) else logging.INFO)
 
+
+def _looks_like_gemini_key(value: str) -> bool:
+    if not value:
+        return False
+    gemini_prefixes = ("AIza", "AI", "gk-", "gw-")
+    return any(value.startswith(prefix) for prefix in gemini_prefixes)
+
+
+def _coalesce_planner_key(planner_key: str, fallback_key: str) -> str:
+    key = (planner_key or "").strip()
+    if key and _looks_like_gemini_key(key):
+        return key
+    if key and not _looks_like_gemini_key(key):
+        logger.info(
+            "[planner] supplied planner key does not resemble a Gemini key; falling back to video key"
+        )
+    return (fallback_key or "").strip()
+
+
 app = FastAPI(title=APP_TITLE)
 app.add_middleware(
     CORSMiddleware,
@@ -373,8 +392,8 @@ def generate_scene_endpoint(world_id: str, payload: SceneGenerationRequest) -> S
 
     path = payload.path or ""
     legacy_key = (payload.api_key or "").strip()
-    planner_api_key = (payload.planner_api_key or legacy_key).strip()
     video_api_key = (payload.video_api_key or legacy_key).strip()
+    planner_api_key = _coalesce_planner_key(payload.planner_api_key, video_api_key or legacy_key)
 
     if not video_api_key:
         raise HTTPException(status_code=400, detail="Video API key required for generation")
