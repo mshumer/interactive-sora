@@ -18,7 +18,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from database import session_scope
-from models import AdminSecret, Scene, SceneMetric, SceneStatus
+from models import AdminSecret, Scene, SceneMetric, SceneStatus, compute_depth, parent_path
 from storage import build_storage_client
 
 
@@ -317,6 +317,95 @@ def get_scene_details(request: Request, path: str = Query("", max_length=512)):
         "scene": _scene_to_dict(scene),
         "children": children_info,
         "storageBytes": int(storage_bytes or 0),
+    }
+
+
+@router.get("/api/tree")
+def get_tree(
+    request: Request,
+    prefix: str = Query("", max_length=512),
+    status_filter: Optional[str] = Query(None, alias="status"),
+    max_depth: int = Query(6, ge=0, le=16),
+    limit: int = Query(200, ge=1, le=2000),
+):
+    require_admin(request)
+    normalized_prefix = _normalize_path(prefix)
+    base_depth = compute_depth(normalized_prefix)
+
+    filters = [Scene.world_id == WORLD_ID]
+    if normalized_prefix:
+        filters.append(
+            or_(Scene.path == normalized_prefix, Scene.path.like(f"{normalized_prefix}/%"))
+        )
+
+    if status_filter:
+        try:
+            status_value = SceneStatus(status_filter)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status filter")
+        filters.append(Scene.status == status_value)
+
+    if max_depth >= 0:
+        filters.append(Scene.depth <= base_depth + max_depth)
+
+    with session_scope() as session:
+        total = session.execute(select(func.count()).where(*filters)).scalar_one()
+        stmt = (
+            select(Scene)
+            .where(*filters)
+            .order_by(Scene.depth, Scene.path)
+            .limit(limit)
+        )
+        scenes = session.execute(stmt).scalars().all()
+
+        if normalized_prefix:
+            ancestor_paths: List[str] = []
+            parent = parent_path(normalized_prefix)
+            while parent is not None:
+                ancestor_paths.append(parent)
+                parent = parent_path(parent)
+            if ancestor_paths:
+                ancestor_stmt = select(Scene).where(
+                    Scene.world_id == WORLD_ID, Scene.path.in_(ancestor_paths)
+                )
+                ancestors = session.execute(ancestor_stmt).scalars().all()
+                scenes = ancestors + scenes
+
+    seen: set[str] = set()
+    nodes: List[dict] = []
+    for scene in scenes:
+        if scene.path in seen:
+            continue
+        seen.add(scene.path)
+        choices = scene.choices if isinstance(scene.choices, list) else []
+        child_paths = []
+        for idx, _choice in enumerate(choices):
+            try:
+                child_paths.append(scene.child_path(idx))
+            except Exception:
+                continue
+        payload = {
+            "path": scene.path,
+            "parent": parent_path(scene.path),
+            "depth": scene.depth,
+            "status": scene.status.value if scene.status else None,
+            "scenarioDisplay": scene.scenario_display,
+            "posterUrl": _resolve_asset_url(scene.poster_url, variant="poster"),
+            "videoUrl": _resolve_asset_url(scene.video_url, variant="video"),
+            "contextVideoUrl": _resolve_asset_url(scene.context_video_url, variant="context"),
+            "updatedAt": scene.updated_at.isoformat() if scene.updated_at else None,
+            "children": child_paths,
+        }
+        nodes.append(payload)
+
+    nodes.sort(key=lambda item: (item["depth"], item["path"]))
+
+    return {
+        "root": normalized_prefix,
+        "baseDepth": base_depth,
+        "total": total,
+        "limit": limit,
+        "nodes": nodes,
     }
 
 

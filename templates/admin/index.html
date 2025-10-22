@@ -8,9 +8,9 @@
     :root {
       color-scheme: dark light;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      --bg: #0b1018;
-      --surface: #111727;
-      --surface-2: #151d30;
+      --bg: #090d16;
+      --surface: rgba(16, 22, 35, 0.85);
+      --surface-2: rgba(21, 28, 44, 0.9);
       --text: #f6f8fa;
       --muted: rgba(246, 248, 250, 0.65);
       --accent: #3d8bfd;
@@ -20,7 +20,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: linear-gradient(165deg, var(--bg), #060a11 55%, #05070c 100%);
+      background: radial-gradient(120% 120% at 10% 10%, #0d1322 0%, #05070c 45%, #03040a 100%);
       color: var(--text);
     }
     header {
@@ -40,25 +40,30 @@
       display: flex;
       flex-wrap: wrap;
       gap: 16px;
-      align-items: center;
+      align-items: flex-end;
     }
     label {
       font-size: 0.85rem;
       color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
-    input[type="text"] {
+    input[type="text"],
+    select {
       padding: 0.55rem 0.7rem;
       border-radius: 10px;
       border: 1px solid rgba(61, 139, 253, 0.35);
       background: rgba(17, 23, 39, 0.75);
       color: inherit;
-      min-width: 220px;
+      min-width: 180px;
     }
-    button, .tonal {
+    button,
+    .chip {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       padding: 0.55rem 0.9rem;
       font-size: 0.95rem;
       border-radius: 10px;
@@ -68,54 +73,132 @@
       color: #fff;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+    button:disabled,
+    .chip:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
     button:hover,
-    .tonal:hover {
+    .chip:hover {
       transform: translateY(-1px);
       box-shadow: 0 10px 26px rgba(61, 139, 253, 0.35);
     }
-    .tonal {
+    .chip {
       background: rgba(17, 25, 39, 0.85);
       color: var(--text);
       border: 1px solid rgba(61, 139, 253, 0.3);
     }
+    .chip[data-active="true"] {
+      background: linear-gradient(135deg, rgba(61, 139, 253, 0.95), rgba(111, 66, 193, 0.95));
+      color: #fff;
+      box-shadow: 0 10px 30px rgba(61, 139, 253, 0.4);
+    }
+    .tonal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0.55rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid rgba(61, 139, 253, 0.3);
+      background: rgba(17, 25, 39, 0.85);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .tonal:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(61, 139, 253, 0.3);
+    }
     .danger {
       background: linear-gradient(135deg, rgba(255, 107, 107, 0.95), #ff4d79);
     }
-    main {
+    .flash {
+      margin: 12px 40px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(61, 139, 253, 0.15);
+      color: var(--text);
+      display: none;
+    }
+    .workspace {
       padding: 12px 40px 60px;
       display: grid;
-      grid-template-columns: minmax(0, 2.2fr) minmax(280px, 1fr);
+      grid-template-columns: minmax(0, 2.6fr) minmax(320px, 1fr);
       gap: 24px;
     }
-    @media (max-width: 1100px) {
-      main {
+    @media (max-width: 1200px) {
+      .workspace {
         grid-template-columns: 1fr;
       }
     }
     .panel {
-      background: rgba(17, 25, 39, 0.78);
+      background: var(--surface);
       border-radius: 18px;
       border: 1px solid rgba(255, 255, 255, 0.06);
-      box-shadow: 0 20px 60px rgba(5, 9, 17, 0.55);
+      box-shadow: 0 24px 70px rgba(5, 9, 17, 0.6);
       overflow: hidden;
+      position: relative;
     }
-    table {
+    .panel.hidden {
+      display: none;
+    }
+    .canvas-container {
+      position: relative;
+      height: 72vh;
+      min-height: 520px;
+      overflow: hidden;
+      background: radial-gradient(circle at top, rgba(61, 139, 253, 0.08), transparent 55%),
+                  linear-gradient(170deg, rgba(7, 11, 21, 0.85), rgba(4, 6, 12, 0.92));
+    }
+    .canvas-toolbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 2;
+    }
+    .canvas-toolbar button {
+      background: rgba(12, 18, 30, 0.75);
+      border: 1px solid rgba(61, 139, 253, 0.35);
+      padding: 0.45rem 0.6rem;
+      font-size: 0.85rem;
+    }
+    svg {
       width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
+      height: 100%;
+      user-select: none;
+      cursor: grab;
     }
-    thead {
-      background: rgba(255, 255, 255, 0.04);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      font-size: 0.75rem;
+    svg:active {
+      cursor: grabbing;
     }
-    th, td {
-      padding: 12px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    .tree-edge {
+      fill: none;
+      stroke: rgba(103, 125, 170, 0.55);
+      stroke-width: 2.2;
     }
-    tbody tr:hover {
-      background: rgba(61, 139, 253, 0.08);
+    .tree-node {
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .tree-node[data-collapsed="true"] {
+      opacity: 0.72;
+    }
+    .tree-node rect.backdrop {
+      fill: rgba(12, 18, 30, 0.78);
+      stroke: rgba(255, 255, 255, 0.08);
+      stroke-width: 1.2;
+    }
+    .tree-node:hover rect.backdrop {
+      stroke: rgba(61, 139, 253, 0.5);
+    }
+    .tree-node[data-selected="true"] rect.backdrop {
+      stroke: var(--accent);
+      stroke-width: 2.2;
+      filter: drop-shadow(0 10px 18px rgba(61, 139, 253, 0.4));
     }
     .status-pill {
       display: inline-flex;
@@ -127,60 +210,99 @@
       text-transform: capitalize;
       background: rgba(61, 139, 253, 0.12);
     }
-    .status-pill[data-status="ready"] { background: rgba(66, 207, 151, 0.18); }
-    .status-pill[data-status="failed"] { background: rgba(255, 107, 107, 0.18); }
-    .status-pill[data-status="queued"] { background: rgba(246, 173, 85, 0.2); }
-    .status-pill[data-status="pending"] { background: rgba(96, 125, 139, 0.2); }
-    .muted {
-      color: var(--muted);
-      font-size: 0.8rem;
+    .status-pill[data-status="ready"] { background: rgba(66, 207, 151, 0.23); }
+    .status-pill[data-status="failed"] { background: rgba(255, 107, 107, 0.22); }
+    .status-pill[data-status="queued"] { background: rgba(246, 173, 85, 0.25); }
+    .status-pill[data-status="pending"] { background: rgba(96, 125, 139, 0.28); }
+    .list-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
     }
-    .detail {
-      padding: 18px 20px;
+    .list-table thead {
+      background: rgba(255, 255, 255, 0.05);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.75rem;
+    }
+    .list-table th,
+    .list-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .list-table tbody tr:hover {
+      background: rgba(61, 139, 253, 0.08);
+    }
+    .inspector {
+      padding: 18px 22px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
+      background: var(--surface-2);
     }
-    .detail h2 {
+    .inspector h2 {
       margin: 0;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
+    }
+    .inspector video {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      max-height: 220px;
+    }
+    .inspector .meta {
+      display: grid;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--muted);
     }
     .children-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 10px;
+      gap: 8px;
+      font-size: 0.88rem;
     }
-    .child-tile {
+    .child-row {
+      padding: 8px 10px;
+      border-radius: 10px;
       background: rgba(255, 255, 255, 0.04);
-      padding: 10px 12px;
-      border-radius: 12px;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
-    .flash {
-      margin: 0 40px 16px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      background: rgba(61, 139, 253, 0.15);
-      color: var(--text);
-      display: none;
+    .view-toggle {
+      display: inline-flex;
+      border-radius: 999px;
+      border: 1px solid rgba(61, 139, 253, 0.25);
+      overflow: hidden;
+    }
+    .view-toggle button {
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
+    }
+    .view-toggle button[data-active="true"] {
+      color: #fff;
+      background: rgba(61, 139, 253, 0.25);
     }
     .overlay {
       position: fixed;
       inset: 0;
-      background: rgba(5, 8, 15, 0.75);
-      backdrop-filter: blur(12px);
+      background: rgba(5, 8, 15, 0.78);
+      backdrop-filter: blur(14px);
       display: none;
       align-items: center;
       justify-content: center;
       padding: 32px;
-      z-index: 20;
+      z-index: 30;
     }
     .overlay.active { display: flex; }
     .modal {
-      width: min(960px, 90vw);
-      background: rgba(8, 12, 20, 0.95);
+      width: min(960px, 92vw);
+      background: rgba(8, 12, 20, 0.96);
       border-radius: 18px;
       border: 1px solid rgba(255, 255, 255, 0.08);
       padding: 20px;
@@ -189,7 +311,7 @@
       flex-direction: column;
       gap: 12px;
     }
-    video {
+    .modal video {
       width: 100%;
       max-height: 70vh;
       border-radius: 12px;
@@ -228,37 +350,87 @@
       Path prefix
       <input id="prefix-input" type="text" placeholder="e.g. 0/1" />
     </label>
-    <button type="button" id="load-btn">Load</button>
+    <label>
+      Status
+      <select id="status-filter">
+        <option value="">Any</option>
+        <option value="ready">Ready</option>
+        <option value="queued">Queued</option>
+        <option value="pending">Pending</option>
+        <option value="failed">Failed</option>
+      </select>
+    </label>
+    <label>
+      Focus path
+      <div style="display:flex; gap:8px;">
+        <input id="focus-input" type="text" placeholder="path (e.g. 1/2)" style="min-width:160px;" />
+        <button type="button" id="focus-btn" class="chip">Center</button>
+      </div>
+    </label>
+    <div class="view-toggle">
+      <button type="button" id="view-canvas" data-active="true">Canvas</button>
+      <button type="button" id="view-list">List</button>
+    </div>
+    <button type="button" id="reload-btn" class="chip">Reload</button>
     <button type="button" id="reset-root" class="danger">Reset entire world</button>
   </div>
 
   <div id="flash" class="flash"></div>
 
-  <main>
-    <section class="panel">
-      <table>
+  <div class="workspace">
+    <section id="canvas-panel" class="panel">
+      <div class="canvas-container">
+        <div class="canvas-toolbar">
+          <button type="button" id="zoom-in">+</button>
+          <button type="button" id="zoom-out">−</button>
+          <button type="button" id="zoom-reset">Reset</button>
+        </div>
+        <svg id="story-canvas">
+          <g id="canvas-group">
+            <g id="edge-layer"></g>
+            <g id="node-layer"></g>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section id="list-panel" class="panel hidden">
+      <table class="list-table">
         <thead>
           <tr>
-            <th style="width:20%">Path</th>
-            <th style="width:12%">Status</th>
-            <th style="width:18%">Updated</th>
-            <th style="width:20%">Media</th>
-            <th>Actions</th>
+            <th style="width:22%">Path</th>
+            <th style="width:14%">Status</th>
+            <th style="width:20%">Updated</th>
+            <th>Scenario</th>
+            <th style="width:12%">Actions</th>
           </tr>
         </thead>
-        <tbody id="scene-table"></tbody>
+        <tbody id="list-table-body"></tbody>
       </table>
     </section>
 
-    <aside class="panel detail">
+    <aside class="panel inspector" id="inspector">
       <div>
-        <h2 id="detail-title">Select a path</h2>
-        <p id="detail-meta" class="muted">Preview scene details to inspect choices, storage footprint, and branch status.</p>
+        <h2 id="inspector-title">Select a node</h2>
+        <div id="inspector-status" class="status-pill" data-status="pending" style="display:none;">pending</div>
       </div>
-      <div id="detail-body" class="children-list"></div>
-      <div id="detail-summary" class="muted"></div>
+      <video id="inspector-video" controls preload="none" muted playsinline></video>
+      <div class="meta">
+        <span id="inspector-scenario">Hover or select a branch to preview prompts and media.</span>
+        <span id="inspector-updated"></span>
+        <span id="inspector-storage"></span>
+      </div>
+      <div>
+        <h3 style="margin:0 0 6px; font-size:1rem;">Children</h3>
+        <div id="inspector-children" class="children-list"></div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:10px;">
+        <button type="button" id="play-video" class="chip">Play clip</button>
+        <button type="button" id="open-modal" class="chip">Open modal</button>
+        <button type="button" id="reset-branch" class="danger">Reset branch</button>
+      </div>
     </aside>
-  </main>
+  </div>
 
   <div id="preview-overlay" class="overlay" role="dialog" aria-modal="true">
     <div class="modal">
@@ -271,218 +443,6 @@
     </div>
   </div>
 
-  <script>
-    const prefixInput = document.getElementById("prefix-input");
-    const tableBody = document.getElementById("scene-table");
-    const flash = document.getElementById("flash");
-    const detailTitle = document.getElementById("detail-title");
-    const detailBody = document.getElementById("detail-body");
-    const detailSummary = document.getElementById("detail-summary");
-    const detailMeta = document.getElementById("detail-meta");
-    const previewOverlay = document.getElementById("preview-overlay");
-    const previewVideo = document.getElementById("preview-video");
-    const previewLinks = document.getElementById("preview-links");
-    const closePreviewButton = document.getElementById("close-preview");
-
-    const state = {
-      scenes: [],
-    };
-
-    function setFlash(message, flavor = "info") {
-      if (!message) {
-        flash.style.display = "none";
-        flash.textContent = "";
-        return;
-      }
-      flash.textContent = message;
-      flash.style.background = flavor === "error" ? "rgba(255,107,107,0.18)" : "rgba(61,139,253,0.18)";
-      flash.style.display = "block";
-      setTimeout(() => {
-        flash.style.display = "none";
-      }, 4000);
-    }
-
-    async function fetchJSON(url, options = {}) {
-      const response = await fetch(url, {
-        headers: {
-          "Accept": "application/json",
-          ...options.headers,
-        },
-        ...options,
-      });
-      if (!response.ok) {
-        const detail = await response.json().catch(() => ({}));
-        throw new Error(detail.detail || `Request failed (${response.status})`);
-      }
-      return response.json();
-    }
-
-    function formatDate(value) {
-      if (!value) return "—";
-      try {
-        const d = new Date(value);
-        return `${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
-      } catch (err) {
-        return value;
-      }
-    }
-
-    function renderTable(items) {
-      tableBody.innerHTML = "";
-      if (!items.length) {
-        const row = document.createElement("tr");
-        row.innerHTML = '<td colspan="5" style="padding:32px 16px; text-align:center; color: var(--muted);">No scenes found for this prefix.</td>';
-        tableBody.appendChild(row);
-        return;
-      }
-
-      for (const scene of items) {
-        const row = document.createElement("tr");
-        const status = scene.status || "unknown";
-        const videoAvailable = !!scene.videoUrl;
-        row.innerHTML = `
-          <td><button class="tonal" data-path="${scene.path}" type="button">${scene.path || '<root>'}</button></td>
-          <td><span class="status-pill" data-status="${status}">${status}</span></td>
-          <td>${formatDate(scene.updatedAt)}</td>
-          <td>
-            ${videoAvailable ? '<button type="button" class="tonal" data-preview="' + scene.path + '">Preview</button>' : '<span class="muted">No video</span>'}
-          </td>
-          <td>
-            <button type="button" class="tonal" data-inspect="${scene.path}">Inspect</button>
-            <button type="button" class="danger" data-reset="${scene.path}">Reset</button>
-          </td>
-        `;
-        tableBody.appendChild(row);
-      }
-    }
-
-    function openPreview(scene) {
-      if (!scene.videoUrl) {
-        setFlash("No video available for this scene", "error");
-        return;
-      }
-      previewVideo.pause();
-      previewVideo.src = scene.videoUrl;
-      if (scene.posterUrl) {
-        previewVideo.poster = scene.posterUrl;
-      }
-      previewLinks.innerHTML = `
-        <a href="${scene.videoUrl}" target="_blank" rel="noopener" style="color: var(--accent);">Open video in new tab</a>
-        ${scene.contextVideoUrl ? ' · <a href="' + scene.contextVideoUrl + '" target="_blank" rel="noopener" style="color: var(--accent);">Full continuity</a>' : ''}
-      `;
-      previewOverlay.classList.add("active");
-      previewVideo.play().catch(() => previewVideo.load());
-      document.addEventListener("keydown", escListener);
-    }
-
-    function closePreview() {
-      previewOverlay.classList.remove("active");
-      previewVideo.pause();
-      previewVideo.src = "";
-      previewVideo.poster = "";
-      previewLinks.textContent = "";
-      document.removeEventListener("keydown", escListener);
-    }
-
-    function escListener(event) {
-      if (event.key === "Escape") {
-        closePreview();
-      }
-    }
-
-    async function loadScenes() {
-      try {
-        const prefix = prefixInput.value.trim();
-        const data = await fetchJSON(`/admin/api/scenes?prefix=${encodeURIComponent(prefix)}`);
-        state.scenes = data.items;
-        renderTable(state.scenes);
-        setFlash(`Loaded ${data.items.length} of ${data.total} scene(s).`);
-      } catch (error) {
-        setFlash(error.message, "error");
-      }
-    }
-
-    async function loadDetails(path) {
-      try {
-        const targetPath = path || "";
-        const detail = await fetchJSON(`/admin/api/scene?path=${encodeURIComponent(targetPath)}`);
-        detailTitle.textContent = targetPath ? `Path ${targetPath}` : "Root scene";
-        detailMeta.textContent = detail.scene.scenarioDisplay || "No scenario description stored.";
-        detailSummary.textContent = `Storage footprint: ${(detail.storageBytes / (1024 * 1024)).toFixed(2)} MiB · Choices: ${(detail.scene.choices || []).length || 0}`;
-        detailBody.innerHTML = "";
-        for (const child of detail.children) {
-          const div = document.createElement("div");
-          div.className = "child-tile";
-          div.innerHTML = `<strong>${child.path}</strong><span class="muted">${child.status}</span>`;
-          detailBody.appendChild(div);
-        }
-      } catch (error) {
-        setFlash(error.message, "error");
-      }
-    }
-
-    async function performReset(path) {
-      const label = path ? `path ${path}` : "the entire world";
-      let confirmMessage = `Delete ${label}? This removes all clips, metrics, and scene records for this branch.`;
-      try {
-        const detail = await fetchJSON(`/admin/api/scene?path=${encodeURIComponent(path || "")}`);
-        const bytes = (detail.storageBytes / (1024 * 1024)).toFixed(2);
-        confirmMessage += `\n\nPreview: ${detail.scene.videoUrl ? 'Video exists' : 'No video'} · Storage ≈ ${bytes} MiB.`;
-      } catch (error) {
-        // Ignore detail errors (scene may not exist)
-      }
-
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
-
-      try {
-        await fetchJSON("/admin/api/reset", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: path || "", inclusive: true }),
-        });
-        setFlash(`Deleted ${label}.`);
-        await loadScenes();
-        if (!path) {
-          detailTitle.textContent = "Select a path";
-          detailBody.innerHTML = "";
-          detailSummary.textContent = "";
-          detailMeta.textContent = "Preview scene details to inspect choices, storage footprint, and branch status.";
-        }
-      } catch (error) {
-        setFlash(error.message, "error");
-      }
-    }
-
-    document.getElementById("load-btn").addEventListener("click", () => loadScenes());
-    document.getElementById("reset-root").addEventListener("click", () => performReset(""));
-    closePreviewButton.addEventListener("click", closePreview);
-    previewOverlay.addEventListener("click", (event) => {
-      if (event.target === previewOverlay) {
-        closePreview();
-      }
-    });
-
-    tableBody.addEventListener("click", (event) => {
-      const button = event.target.closest("button");
-      if (!button) return;
-      const path = button.dataset.path ?? button.dataset.preview ?? button.dataset.reset ?? button.dataset.inspect ?? "";
-      if (button.dataset.preview !== undefined) {
-        const scene = state.scenes.find((s) => s.path === button.dataset.preview);
-        if (scene) openPreview(scene);
-      } else if (button.dataset.path !== undefined) {
-        loadDetails(path);
-      } else if (button.dataset.reset !== undefined) {
-        performReset(path);
-      } else if (button.dataset.inspect !== undefined) {
-        loadDetails(path);
-      }
-    });
-
-    document.addEventListener("DOMContentLoaded", () => {
-      loadScenes();
-    });
-  </script>
+  <script type="module" src="{{ url_for('static', path='admin/canvas.js') }}"></script>
 </body>
 </html>

@@ -197,6 +197,11 @@ app.add_middleware(
 if isinstance(storage_client, LocalStorageClient):
     app.mount("/storage", StaticFiles(directory=storage_client.base_dir), name="storage")
 
+STATIC_DIR = Path("static")
+if not STATIC_DIR.exists():
+    STATIC_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 app.include_router(admin_router)
 
 
