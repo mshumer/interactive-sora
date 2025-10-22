@@ -26,7 +26,7 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
   const [form, setForm] = useState({
     plannerApiKey: "",
     videoApiKey: "",
-    plannerModel: "gpt-5",
+    plannerModel: "models/gemini-2.5-pro-latest",
     veoModel: "veo-3.1-generate-preview",
     videoSize: "1280x720",
     basePrompt:
@@ -47,7 +47,7 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
     if (storedPlanner || storedVideo) {
       setForm((prev) => ({
         ...prev,
-        plannerApiKey: storedPlanner,
+        plannerApiKey: storedPlanner || storedVideo,
         videoApiKey: storedVideo,
       }));
     }
@@ -122,12 +122,12 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
 
             <form onSubmit={handleSubmit}>
               <label className="field">
-                <span>Planner API key (OpenAI Responses)</span>
+                <span>Planner API key (Gemini 2.5 Pro)</span>
                 <div className="masked">
                   <input
                     name="plannerApiKey"
                     type="password"
-                    placeholder="sk-..."
+                    placeholder="AIza..."
                     value={form.plannerApiKey}
                     onChange={handleChange}
                     required
@@ -162,7 +162,7 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
                     name="plannerModel"
                     value={form.plannerModel}
                     onChange={handleChange}
-                    placeholder="gpt-5"
+                    placeholder="models/gemini-2.5-pro-latest"
                     required
                   />
                 </label>

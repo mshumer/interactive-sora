@@ -79,9 +79,6 @@ APP_TITLE = "Veo Shared World API"
 DEFAULT_SECONDS = 8
 MAX_CONTEXT_SECONDS = 141.0
 
-OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
-RESPONSES_ENDPOINT = f"{OPENAI_API_BASE}/responses"
-
 GEMINI_API_BASE = os.environ.get(
     "GEMINI_API_BASE", "https://generativelanguage.googleapis.com/v1beta"
 )
@@ -95,7 +92,8 @@ DEFAULT_WORLD_BASE_PROMPT = (
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
-PLANNER_MODEL = os.environ.get("PLANNER_MODEL", "gpt-5")
+DEFAULT_PLANNER_MODEL = "models/gemini-2.5-pro-latest"
+PLANNER_MODEL = os.environ.get("PLANNER_MODEL", DEFAULT_PLANNER_MODEL)
 VEO_MODEL = os.environ.get("VEO_MODEL", "veo-3.1-fast-generate-preview")
 VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1280x720")
 VEO_ASPECT_RATIO = _compute_aspect_ratio(VIDEO_SIZE)
@@ -118,7 +116,7 @@ DEFAULT_PROMPT_GUIDANCE = (
 )
 
 PROMPT_GUIDANCE = os.environ.get("WORLD_PROMPT_GUIDANCE", "").strip() or DEFAULT_PROMPT_GUIDANCE
-STATE_SUMMARY_MODEL = os.environ.get("STATE_SUMMARY_MODEL", "gpt-5-mini").strip()
+STATE_SUMMARY_MODEL = os.environ.get("STATE_SUMMARY_MODEL", DEFAULT_PLANNER_MODEL).strip()
 
 VIDEO_DIR = Path("veo_cyoa_videos")
 FRAME_DIR = Path("veo_cyoa_frames")
@@ -1214,43 +1212,58 @@ Rules:
 
 
 def responses_create(api_key: str, model: str, instructions: str, user_input: str) -> str:
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": model,
-        "instructions": instructions,
-        "input": user_input,
-    }
-    response = requests.post(RESPONSES_ENDPOINT, headers=headers, json=payload, timeout=120)
-    if response.status_code >= 400:
-        raise RuntimeError(f"Responses API error {response.status_code}: {response.text}")
-    data = response.json()
+    normalized_model = (model or "").strip() or DEFAULT_PLANNER_MODEL
+    if "/" not in normalized_model:
+        normalized_model = f"models/{normalized_model}" if not normalized_model.startswith("models/") else normalized_model
+    elif not normalized_model.startswith("models/") and normalized_model.count("/") == 1:
+        normalized_model = f"models/{normalized_model.split('/', 1)[1]}"
 
-    text = data.get("output_text", "")
+    client = _build_genai_client(api_key)
+    try:
+        response = client.models.generate_content(
+            model=normalized_model,
+            contents=[{"role": "user", "parts": [{"text": user_input}]}],
+            system_instruction=instructions,
+        )
+    except Exception as exc:
+        raise RuntimeError(f"Gemini text generation failed: {exc}") from exc
+
+    text = getattr(response, "text", None)
     if text:
         return text
 
-    try:
-        items = data.get("output", [])
-        builder: List[str] = []
-        for item in items:
-            blocks = item.get("content") or []
-            for block in blocks:
-                b_type = block.get("type")
-                if b_type in {"output_text", "text"}:
-                    builder.append(block.get("text", ""))
-                elif isinstance(block.get("text"), list):
-                    for segment in block["text"]:
-                        if isinstance(segment, dict) and segment.get("type") in {"output_text", "text"}:
-                            builder.append(segment.get("text", ""))
-        if builder:
-            return "".join(builder)
-    except Exception:
-        pass
+    builder: List[str] = []
 
-    return json.dumps(data)
+    def _collect_parts(content_obj: Any) -> None:
+        if content_obj is None:
+            return
+        parts = getattr(content_obj, "parts", None)
+        if parts is None and isinstance(content_obj, dict):
+            parts = content_obj.get("parts")
+        if not parts:
+            return
+        for part in parts:
+            if isinstance(part, dict):
+                part_text = part.get("text") or part.get("output_text")
+            else:
+                part_text = getattr(part, "text", None)
+            if part_text:
+                builder.append(part_text)
+
+    candidates = getattr(response, "candidates", None)
+    if candidates:
+        for candidate in candidates:
+            if isinstance(candidate, dict):
+                _collect_parts(candidate.get("content"))
+            else:
+                _collect_parts(getattr(candidate, "content", None))
+    elif isinstance(response, dict):
+        _collect_parts(response.get("content"))
+
+    if builder:
+        return "".join(builder)
+
+    raise RuntimeError("Gemini text generation returned no text output")
 
 
 def extract_first_json(text: str) -> dict:

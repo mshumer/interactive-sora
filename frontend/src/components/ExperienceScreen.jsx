@@ -444,8 +444,10 @@ const ApiKeysModal = ({ initialPlanner, initialVideo, onSubmit, onCancel }) => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (!video.trim()) return;
-    onSubmit({ planner, video });
+    const trimmedVideo = video.trim();
+    if (!trimmedVideo) return;
+    const trimmedPlanner = planner.trim() || trimmedVideo;
+    onSubmit({ planner: trimmedPlanner, video: trimmedVideo });
   };
 
   return (
@@ -453,8 +455,8 @@ const ApiKeysModal = ({ initialPlanner, initialVideo, onSubmit, onCancel }) => {
       <div className="key-modal">
         <h3>Provide your API keys</h3>
         <p>
-          Keys stay in your browser. We use the Gemini key for Veo renders and the OpenAI key for
-          planning and summaries.
+          Keys stay in your browser. Your Gemini key powers Veo renders and Gemini 2.5 Pro planning &
+          summaries.
         </p>
         <form onSubmit={handleSubmit}>
           <label>
@@ -478,13 +480,13 @@ const ApiKeysModal = ({ initialPlanner, initialVideo, onSubmit, onCancel }) => {
           </label>
 
           <label>
-            <span>Planner API key (OpenAI)</span>
+            <span>Planner API key (Gemini 2.5 Pro)</span>
             <div className="key-input-row">
               <input
                 type={showPlanner ? "text" : "password"}
                 value={planner}
                 onChange={(event) => setPlanner(event.target.value)}
-                placeholder="sk-..."
+                placeholder="Reuse Gemini key or paste another"
               />
               <button
                 type="button"
