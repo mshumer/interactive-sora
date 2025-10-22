@@ -97,7 +97,7 @@ DEFAULT_WORLD_BASE_PROMPT = (
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
 PLANNER_MODEL = os.environ.get("PLANNER_MODEL", "gpt-5")
 VEO_MODEL = os.environ.get("VEO_MODEL", "veo-3.1-generate-preview")
-VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1280x720")
+VIDEO_SIZE = os.environ.get("VIDEO_SIZE", "1920x1080")
 VEO_ASPECT_RATIO = _compute_aspect_ratio(VIDEO_SIZE)
 SCENE_TIMEOUT_SECONDS = int(os.environ.get("SCENE_TIMEOUT_SECONDS", "900"))
 WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"))
@@ -1533,7 +1533,7 @@ def veo_create_video(
             config=genai_types.GenerateVideosConfig(
                 duration_seconds=seconds,
                 aspect_ratio=aspect_ratio,
-                resolution="720p",
+                resolution="1080p",
                 number_of_videos=1,
             ),
         )
