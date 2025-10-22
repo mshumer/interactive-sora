@@ -1218,12 +1218,13 @@ def responses_create(api_key: str, model: str, instructions: str, user_input: st
     elif not normalized_model.startswith("models/") and normalized_model.count("/") == 1:
         normalized_model = f"models/{normalized_model.split('/', 1)[1]}"
 
+    combined_prompt = instructions.rstrip() + "\n\n" + user_input.strip()
+
     client = _build_genai_client(api_key)
     try:
         response = client.models.generate_content(
             model=normalized_model,
-            contents=[{"role": "user", "parts": [{"text": user_input}]}],
-            system_instruction=instructions,
+            contents=[{"role": "user", "parts": [{"text": combined_prompt}]}],
         )
     except Exception as exc:
         raise RuntimeError(f"Gemini text generation failed: {exc}") from exc
