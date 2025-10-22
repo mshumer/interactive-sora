@@ -89,7 +89,9 @@ GEMINI_API_BASE = os.environ.get(
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    ""
+    "The Courier is an elite operative racing north through Manhattan from the Financial District toward the Upper West Side to secure chronoglyph shards before rival crews. "
+    "Opening scene: in first-person, the Courier descends from a hovering stealth helicopter on a fast rope, feeling rotor wash and neon reflections off the glass canyons of FiDi. The rope slide ends with heavy boots hitting the rain-slick street, establishing an urgent foothold amid honking traffic, startled civilians, and distant gunfire. "
+    "The mission begins the moment the player lands on the asphalt, weapon drawn and HUD flickering, ready to push through the maze of downtown streets toward the next objective."
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
