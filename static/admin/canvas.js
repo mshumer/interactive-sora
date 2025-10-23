@@ -38,6 +38,7 @@ const inspectorVideo = document.getElementById("inspector-video");
 const playVideoButton = document.getElementById("play-video");
 const openModalButton = document.getElementById("open-modal");
 const resetBranchButton = document.getElementById("reset-branch");
+const scrubBranchButton = document.getElementById("scrub-branch");
 const previewOverlay = document.getElementById("preview-overlay");
 const previewVideo = document.getElementById("preview-video");
 const previewLinks = document.getElementById("preview-links");
@@ -56,6 +57,11 @@ const state = {
   transformDirty: false,
   drag: { active: false, id: null, startX: 0, startY: 0 },
   zoomRAF: null,
+  scrub: {
+    timer: null,
+    queue: [],
+    index: 0,
+  },
 };
 
 function setFlash(message, flavor = "info") {
@@ -447,6 +453,7 @@ function clearSelection() {
     }
   }
   state.selectedPath = null;
+  stopScrub();
 }
 
 async function selectNode(path, { center = false } = {}) {
@@ -554,6 +561,58 @@ function fillInspectorDetails(node, detail) {
       inspectorChildren.appendChild(row);
     });
   }
+}
+
+function gatherBranchClips(path) {
+  const collected = [];
+  state.nodes.forEach((node) => {
+    if (!node.videoUrl) {
+      return;
+    }
+    if (node.path === path || node.path.startsWith(`${path}/`)) {
+      collected.push(node);
+    }
+  });
+  collected.sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+  return collected;
+}
+
+function stopScrub() {
+  if (state.scrub.timer) {
+    clearTimeout(state.scrub.timer);
+    state.scrub.timer = null;
+  }
+  state.scrub.queue = [];
+  state.scrub.index = 0;
+}
+
+function scrubNextClip() {
+  if (!state.scrub.queue.length) {
+    stopScrub();
+    return;
+  }
+  const node = state.scrub.queue[state.scrub.index];
+  selectNode(node.path, { center: false });
+  inspectorVideo.crossOrigin = "anonymous";
+  inspectorVideo.src = node.videoUrl;
+  inspectorVideo.poster = node.posterUrl || node.externalPosterUrl || "";
+  inspectorVideo.muted = true;
+  inspectorVideo.load();
+  inspectorVideo.play().catch(() => inspectorVideo.load());
+  state.scrub.index = (state.scrub.index + 1) % state.scrub.queue.length;
+  state.scrub.timer = setTimeout(scrubNextClip, 1500);
+}
+
+function startScrub(path) {
+  stopScrub();
+  const queue = gatherBranchClips(path);
+  if (!queue.length) {
+    setFlash("No clips to scrub in this branch", "error");
+    return;
+  }
+  state.scrub.queue = queue;
+  state.scrub.index = 0;
+  scrubNextClip();
 }
 
 function toggleCollapse(path) {
@@ -874,6 +933,13 @@ function initEvents() {
   playVideoButton.addEventListener("click", playInspectorVideo);
   openModalButton.addEventListener("click", openModalForSelected);
   resetBranchButton.addEventListener("click", () => handleReset(state.selectedPath || ""));
+  scrubBranchButton.addEventListener("click", () => {
+    if (!state.selectedPath) {
+      setFlash("Select a branch first", "error");
+      return;
+    }
+    startScrub(state.selectedPath);
+  });
   resetRootButton.addEventListener("click", () => handleReset(""));
 
   previewOverlay.addEventListener("click", (event) => {
