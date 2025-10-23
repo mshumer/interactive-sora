@@ -101,17 +101,20 @@ function buildHierarchy(rawNodes, baseDepth) {
   state.nodes.clear();
   state.baseDepth = baseDepth;
   rawNodes.forEach((raw) => {
-    const node = {
-      path: raw.path,
-      parentPath: raw.parent,
-      depth: raw.depth,
-      status: raw.status,
-      scenario: raw.scenarioDisplay || "",
-      posterUrl: raw.posterUrl || null,
-      videoUrl: raw.videoUrl || null,
-      contextVideoUrl: raw.contextVideoUrl || null,
-      updatedAt: raw.updatedAt || null,
-      childrenPaths: raw.children || [],
+  const node = {
+    path: raw.path,
+    parentPath: raw.parent,
+    depth: raw.depth,
+    status: raw.status,
+    scenario: raw.scenarioDisplay || "",
+    posterUrl: raw.posterUrl || raw.externalPosterUrl || null,
+    videoUrl: raw.videoUrl || null,
+    contextVideoUrl: raw.contextVideoUrl || null,
+    externalPosterUrl: raw.externalPosterUrl || null,
+    externalVideoUrl: raw.externalVideoUrl || null,
+    externalContextVideoUrl: raw.externalContextVideoUrl || null,
+    updatedAt: raw.updatedAt || null,
+    childrenPaths: raw.children || [],
       children: [],
       element: null,
       imageEl: null,
@@ -476,13 +479,16 @@ function updateInspector(node) {
   inspectorUpdated.textContent = node.updatedAt ? `Updated: ${new Date(node.updatedAt).toLocaleString()}` : "";
   inspectorStorage.textContent = "Loading storage…";
   inspectorChildren.innerHTML = "";
+  inspectorVideo.pause();
+  inspectorVideo.removeAttribute("src");
+  inspectorVideo.load();
+  const posterSource = node.posterUrl || node.externalPosterUrl || "";
   if (node.videoUrl) {
     inspectorVideo.style.display = "block";
-    inspectorVideo.poster = node.posterUrl || "";
+    inspectorVideo.poster = posterSource;
   } else {
     inspectorVideo.style.display = "none";
-    inspectorVideo.removeAttribute("src");
-    inspectorVideo.load();
+    inspectorVideo.poster = posterSource;
   }
 
   const cached = state.detailCache.get(node.path);
@@ -503,6 +509,24 @@ function updateInspector(node) {
 }
 
 function fillInspectorDetails(node, detail) {
+  if (detail?.scene) {
+    const sceneData = detail.scene;
+    node.videoUrl = sceneData.videoUrl || node.videoUrl;
+    node.posterUrl = sceneData.posterUrl || node.posterUrl;
+    node.contextVideoUrl = sceneData.contextVideoUrl || node.contextVideoUrl;
+    node.externalVideoUrl = sceneData.externalVideoUrl || node.externalVideoUrl;
+    node.externalPosterUrl = sceneData.externalPosterUrl || node.externalPosterUrl;
+    node.externalContextVideoUrl = sceneData.externalContextVideoUrl || node.externalContextVideoUrl;
+    node.updatedAt = sceneData.updatedAt || node.updatedAt;
+    const posterSource = node.posterUrl || node.externalPosterUrl || "";
+    if (node.videoUrl) {
+      inspectorVideo.style.display = "block";
+      inspectorVideo.poster = posterSource;
+    } else {
+      inspectorVideo.style.display = "none";
+      inspectorVideo.poster = posterSource;
+    }
+  }
   const bytes = detail?.storageBytes ?? 0;
   const mb = bytes ? (bytes / (1024 * 1024)).toFixed(2) : "0.00";
   inspectorStorage.textContent = `Storage footprint: ${mb} MiB`;
@@ -609,6 +633,9 @@ function pruneSubtree(path) {
     posterUrl: node.posterUrl,
     videoUrl: node.videoUrl,
     contextVideoUrl: node.contextVideoUrl,
+    externalPosterUrl: node.externalPosterUrl,
+    externalVideoUrl: node.externalVideoUrl,
+    externalContextVideoUrl: node.externalContextVideoUrl,
     updatedAt: node.updatedAt,
     children: node.childrenPaths,
   })), state.baseDepth);
@@ -736,8 +763,9 @@ function playInspectorVideo() {
   }
   inspectorVideo.crossOrigin = "anonymous";
   inspectorVideo.src = node.videoUrl;
-  inspectorVideo.poster = node.posterUrl || "";
+  inspectorVideo.poster = node.posterUrl || node.externalPosterUrl || "";
   inspectorVideo.muted = false;
+  inspectorVideo.load();
   const playPromise = inspectorVideo.play();
   if (playPromise && typeof playPromise.then === "function") {
     playPromise.catch(() => {
@@ -756,13 +784,15 @@ function openModalForSelected() {
   }
   previewVideo.crossOrigin = "anonymous";
   previewVideo.src = node.videoUrl;
-  previewVideo.poster = node.posterUrl || "";
+  previewVideo.poster = node.posterUrl || node.externalPosterUrl || "";
   previewTitle.textContent = node.path || "Root";
-  previewLinks.innerHTML = `
-    <a href="${node.videoUrl}" target="_blank" rel="noopener" style="color: var(--accent);">Open video in new tab</a>
-    ${node.contextVideoUrl ? ' · <a href="' + node.contextVideoUrl + '" target="_blank" rel="noopener" style="color: var(--accent);">Full continuity</a>' : ''}
-  `;
+  const externalVideo = node.externalVideoUrl || node.videoUrl;
+  const externalContext = node.externalContextVideoUrl || node.contextVideoUrl;
+  previewLinks.innerHTML = externalVideo
+    ? `<a href="${externalVideo}" target="_blank" rel="noopener" style="color: var(--accent);">Open video in new tab</a>${externalContext ? ' · <a href="' + externalContext + '" target="_blank" rel="noopener" style="color: var(--accent);">Full continuity</a>' : ''}`
+    : "";
   previewOverlay.classList.add("active");
+  previewVideo.load();
   const playPromise = previewVideo.play();
   if (playPromise && typeof playPromise.then === "function") {
     playPromise.catch(() => {
