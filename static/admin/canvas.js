@@ -39,6 +39,7 @@ const playVideoButton = document.getElementById("play-video");
 const openModalButton = document.getElementById("open-modal");
 const resetBranchButton = document.getElementById("reset-branch");
 const scrubBranchButton = document.getElementById("scrub-branch");
+const stopScrubButton = document.getElementById("stop-scrub");
 const previewOverlay = document.getElementById("preview-overlay");
 const previewVideo = document.getElementById("preview-video");
 const previewLinks = document.getElementById("preview-links");
@@ -610,6 +611,7 @@ function startScrub(path) {
     setFlash("No clips to scrub in this branch", "error");
     return;
   }
+  setFlash(`Scrubbing ${queue.length} clip${queue.length === 1 ? "" : "s"}.`, "info");
   state.scrub.queue = queue;
   state.scrub.index = 0;
   scrubNextClip();
@@ -939,6 +941,10 @@ function initEvents() {
       return;
     }
     startScrub(state.selectedPath);
+  });
+  stopScrubButton.addEventListener("click", () => {
+    stopScrub();
+    setFlash("Scrub stopped.");
   });
   resetRootButton.addEventListener("click", () => handleReset(""));
 
