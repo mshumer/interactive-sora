@@ -7,15 +7,18 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional
+from urllib.parse import urlencode
 
 from argon2 import PasswordHasher, exceptions as argon2_exceptions
 from fastapi import APIRouter, Form, HTTPException, Query, Request, Response, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, SignatureExpired, TimestampSigner
 from pydantic import BaseModel
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
+
+import requests
 
 from database import session_scope
 from models import AdminSecret, Scene, SceneMetric, SceneStatus, compute_depth, parent_path
@@ -186,15 +189,24 @@ def _resolve_asset_url(stored_value: Optional[str], variant: str) -> Optional[st
 
 
 def _scene_to_dict(scene: Scene) -> Dict[str, object]:
+    video_proxy = _proxy_media_url(scene.path, "video") if scene.video_url else None
+    poster_proxy = _proxy_media_url(scene.path, "poster") if scene.poster_url else None
+    context_proxy = _proxy_media_url(scene.path, "context") if scene.context_video_url else None
+    external_video = _resolve_asset_url(scene.video_url, variant="video") if scene.video_url else None
+    external_poster = _resolve_asset_url(scene.poster_url, variant="poster") if scene.poster_url else None
+    external_context = _resolve_asset_url(scene.context_video_url, variant="context") if scene.context_video_url else None
     return {
         "worldId": scene.world_id,
         "path": scene.path,
         "depth": scene.depth,
         "status": scene.status.value if scene.status else None,
         "scenarioDisplay": scene.scenario_display,
-        "videoUrl": _resolve_asset_url(scene.video_url, "video"),
-        "posterUrl": _resolve_asset_url(scene.poster_url, "poster"),
-        "contextVideoUrl": _resolve_asset_url(scene.context_video_url, "context"),
+        "videoUrl": video_proxy,
+        "posterUrl": poster_proxy,
+        "contextVideoUrl": context_proxy,
+        "externalVideoUrl": external_video,
+        "externalPosterUrl": external_poster,
+        "externalContextVideoUrl": external_context,
         "updatedAt": scene.updated_at,
         "startedAt": scene.started_at,
         "progress": getattr(scene, "progress", None),
@@ -202,6 +214,21 @@ def _scene_to_dict(scene: Scene) -> Dict[str, object]:
         "choices": scene.choices if isinstance(scene.choices, list) else None,
         "choicesShort": scene.choices_short if isinstance(scene.choices_short, list) else None,
     }
+
+
+def _proxy_media_url(path: str, variant: str) -> str:
+    query = urlencode({"path": path, "variant": variant})
+    return f"/admin/api/media?{query}"
+
+
+def _scene_media_value(scene: Scene, variant: str) -> Optional[str]:
+    if variant == "video":
+        return scene.video_url
+    if variant == "poster":
+        return scene.poster_url
+    if variant == "context":
+        return scene.context_video_url
+    raise ValueError(f"Unknown media variant '{variant}'")
 
 
 @router.get("", response_class=HTMLResponse)
@@ -390,9 +417,12 @@ def get_tree(
             "depth": scene.depth,
             "status": scene.status.value if scene.status else None,
             "scenarioDisplay": scene.scenario_display,
-            "posterUrl": _resolve_asset_url(scene.poster_url, variant="poster"),
-            "videoUrl": _resolve_asset_url(scene.video_url, variant="video"),
-            "contextVideoUrl": _resolve_asset_url(scene.context_video_url, variant="context"),
+            "posterUrl": _proxy_media_url(scene.path, "poster") if scene.poster_url else None,
+            "videoUrl": _proxy_media_url(scene.path, "video") if scene.video_url else None,
+            "contextVideoUrl": _proxy_media_url(scene.path, "context") if scene.context_video_url else None,
+            "externalVideoUrl": _resolve_asset_url(scene.video_url, variant="video") if scene.video_url else None,
+            "externalPosterUrl": _resolve_asset_url(scene.poster_url, variant="poster") if scene.poster_url else None,
+            "externalContextVideoUrl": _resolve_asset_url(scene.context_video_url, variant="context") if scene.context_video_url else None,
             "updatedAt": scene.updated_at.isoformat() if scene.updated_at else None,
             "children": child_paths,
         }
@@ -473,3 +503,56 @@ def reset_path(request: Request, payload: ResetRequest) -> Dict[str, int]:
         "deletedScenes": len(target_paths),
         "deletedBytes": int(total_bytes or 0),
     }
+
+
+@router.get("/api/media")
+def proxy_media(
+    request: Request,
+    path: str = Query("", max_length=512),
+    variant: str = Query("video"),
+):
+    require_admin(request)
+    normalized_path = _normalize_path(path)
+    variant = variant.lower()
+    if variant not in {"video", "poster", "context"}:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid media variant")
+
+    with session_scope() as session:
+        stmt = select(Scene).where(Scene.world_id == WORLD_ID, Scene.path == normalized_path)
+        scene = session.execute(stmt).scalars().first()
+        if scene is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scene not found")
+        raw_value = _scene_media_value(scene, variant)
+        if not raw_value:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Media not available")
+        resolved_url = _resolve_asset_url(raw_value, variant=variant)
+
+    if resolved_url.startswith("/storage/"):
+        return RedirectResponse(url=resolved_url)
+
+    try:
+        upstream = requests.get(resolved_url, stream=True, timeout=60)
+    except requests.RequestException as exc:  # pragma: no cover
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    if upstream.status_code >= 400:
+        detail = upstream.text[:200]
+        upstream.close()
+        raise HTTPException(status_code=upstream.status_code, detail=f"Upstream error: {detail}")
+
+    media_type = {
+        "video": "video/mp4",
+        "context": "video/mp4",
+        "poster": "image/jpeg",
+    }[variant]
+
+    def iter_stream():
+        try:
+            for chunk in upstream.iter_content(chunk_size=8192):
+                if chunk:
+                    yield chunk
+        finally:
+            upstream.close()
+
+    headers = {"Cache-Control": "private, max-age=60"}
+    return StreamingResponse(iter_stream(), media_type=media_type, headers=headers)
