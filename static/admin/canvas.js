@@ -570,7 +570,7 @@ function gatherBranchClips(path) {
     if (!node.videoUrl) {
       return;
     }
-    if (node.path === path || node.path.startsWith(`${path}/`)) {
+    if (!path || node.path === path || node.path.startsWith(`${path}/`)) {
       collected.push(node);
     }
   });
