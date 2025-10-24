@@ -87,9 +87,9 @@ GEMINI_API_BASE = os.environ.get(
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    "The Runner jolts awake inside an endless brutalist labyrinth where stairwells corkscrew back into themselves and doorways open onto the same corridor from impossible angles. "
-    "We experience everything in first-person: the Runner's pulse hammering, breath crystallizing in the cold air, and palms slapping concrete that flexes like muscle. "
-    "An unseen Hunter prowls just beyond sight, its claws scraping through the walls; no matter how far the Runner sprints, the maze loops and fractures like a shared hallucination, trapping them in perpetual flight."
+    "The Runner jolts awake inside a decaying hospital atrium that should open onto daylight, only to find every exit feeding back into the same corridor from a new impossible angle. "
+    "We witness everything through their first-person vantage: heartbeat in their ears, flashlight beam shaking, fingers scraping rusted railings that bend like bone. "
+    "An unseen Hunter hunts just beyond the light, its footsteps echoing ahead and behind at once; every sprint collapses into another looping hallway, turning the escape into an endless nightmare."
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
@@ -103,15 +103,17 @@ WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"
 CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "veo-shared-world")
 
 DEFAULT_PROMPT_GUIDANCE = (
-    "\n".join(
+    "
+".join(
         [
-            "Tone: Oppressive, surreal psychological horror told in ragged first-person breaths; dread must escalate every beat.",
-            "Movement: Keep the Runner sprinting, stumbling, or scrambling; impossible geometry warps trajectories, floors tilt, gravity lurches.",
-            "Environment: Hallways, staircases, and chambers fold into themselves; walls ripple, Escher stairwells intersect, voids open mid-shot.",
-            "Objective: Tease escape routes that distort or reset; show the Runner realizing progress is an illusion even as they chase the next beacon.",
-            "Hunter: Portray the pursuing entity through fragments--shadow slashes, mirrored eyes, bone chimes--always closer, never fully revealed.",
-            "Sensory: Layer distorted audio (reversed whispers, subsonic rumbles) and visual anomalies (fractured perspectives, liquid light, afterimage trails).",
-            "Hook: End every beat with a reality fracture or immediate threat forcing the Runner into a new impossible choice.",
+            "Tone: Claustrophobic, dread-soaked survival horror; every beat tightens tension rather than releasing it.",
+            "Perspective: Camera locked to the Runner's POV with flashlight or headlamp leading; hands, breaths, and tremors stay in frame.",
+            "Movement: Keep the Runner moving--sprinting, sliding, bracing--even when the world doubles back or gravity skews sideways.",
+            "Environment: Non-Euclidean hospital wings, morgues, stairwells, and maintenance tunnels that loop or intersect incorrectly while retaining tangible textures.",
+            "Objective: Tease believable exits (exit signs, elevators, loading docks) that distort or reset just as the Runner commits.",
+            "Hunter: Reveal the pursuer through partial silhouettes, reflections, breath, or debris impacts; never linger long enough to demystify it.",
+            "Sensory: Layer analog glitches, distant alarms, rattling vents, and light failures that sell grounded horror inside the impossible architecture.",
+            "Hook: Close every beat on a trapped choice--doors sealing, stairwells folding, Hunter surging in--forcing the next decision immediately."
         ]
     )
 )
@@ -1197,7 +1199,7 @@ def _child_path(path: str, index: int) -> str:
 # === Planner Helpers ===
 
 PLANNER_SYSTEM = """
-You are the Scenario Planner for a non-Euclidean first-person horror escape that never resolves, only loops deeper into the nightmare.
+You are the Scenario Planner for a non-Euclidean first-person survival horror story where flight never ends, perspective never steadies, and the Hunter is always almost here.
 
 Your job:
 - Given a BASE PROMPT (world/tone) or a CONTINUATION (previous scene prompts + the player's chosen action),
@@ -1211,30 +1213,30 @@ Your job:
 
 Great Example (match this intensity & structure):
 {
-  "scenario_display": "You stagger down a ribbed concrete throat while gravity kinks sideways and the hallway folds back on itself. Condensation sweats from the walls, EXIT glyphs flicker and flip upside down, and every stride drops the floor like a broken elevator. A bone-deep scrape erupts behind as the Hunter's silhouette multiplies inside puddles of mirror-black water. Strobe lights stutter the corridor into black-and-white frames. Five seconds before the maze seals like a clenched fist--choose now.",
-  "veo_prompt": "Context (not visible in video, only for AI guidance): Runner trapped in looping brutalist labyrinth; Hunter, a negative-space silhouette with cable antlers, stalks meters behind.
-Action 0-2s: Sprint along a hallway that kinks forty-five degrees mid-frame, slap a veined wall, and hurdle a breathing pipe.
-Action 2-5s: Floor liquefies into an angled slide; ride it sideways, crash through a rotating door, glimpse the Hunter's antlers slicing sparks.
-Action 5-8s: Dive into an Escher stairwell spiraling upward and downward simultaneously, grab a ringing chain, swing across a void opening.
-Camera: Head-cam lurches handheld, dutch-tilts with the hallway twist, whips right to reveal the Hunter blooming in reflective puddles.
-Audio: Layer ragged breathing, backward whispers counting down from ten, bass knells rattling vents, and the Hunter's claws skittering along concrete.
-FX: Corridor stretches like taffy, exit glyphs smear into trails, breath fog crystallizes, and ceiling dust bursts in anti-gravity motes.
-Momentum Escape: Drive toward the throbbing white door that rotates out of nowhere; if you miss, the hallway seals into bone.",
+  "scenario_display": "You barrel down a mildewed hospital corridor while EXIT signs flicker red, then invert upside down. The floor humps like a spine, doors slam ahead, and your flashlight stutters as if the batteries are giving up. Behind you, the Hunter's breath whistles through the vents, drawing closer even when the hallway doubles back on itself. Ten steps before the last open stairwell folds shut--choose now.",
+  "veo_prompt": "Context (not visible in video, only for AI guidance): Runner trapped in looping hospital wing; Hunter, a spined silhouette, stalks just beyond the flashlight cone.
+Action 0-2s: Sprint past flickering exit signs, visor catching peeling wallpaper while your flashlight beam shudders across stained tiles.
+Action 2-5s: Skid around a collapsed gurney, slam shoulder into swinging doors, glimpse the Hunter's jaw splitting wide in silhouette.
+Action 5-8s: Leap down a stairwell that curls upward, crash into yourself looping back, keep running despite the impossible rebound.
+Camera: Locked first-person at eye level, subtle head bob, flashlight beam leading, occasional whip pans when the hallway folds.
+Audio: Distant fire alarms looping, ragged breathing, wet footfalls echoing backward, Hunter growl phasing between channels.
+FX: Ceiling tiles drip black water upward, walls breathe, shadows trail delayed copies of the Runner.
+Momentum Pursuit: Chase the lone exit sign pulsing crimson around the next bend; hesitate and the corridor snaps into darkness.",
   "choices": [
-    "Command: Dive through the spinning door, wedge it with the chain (Risk: chain shatters; Payoff: slow the Hunter for a breath).",
-    "Command: Vault the stairwell void and grab the ringing glyph orb (Risk: miss the swing; Payoff: warp gravity to fling forward).",
-    "Command: Match the Hunter's footfalls and sidestep into its wake (Risk: rhythm breaks; Payoff: access the corridor it just carved)."
+    "Command: Dive through the pulsing exit sign even as it rotates sideways (Risk: land in a void; Payoff: break the current loop).",
+    "Command: Drop behind the gurney, kill the light, and mirror the Hunter's breathing (Risk: get pinned; Payoff: slip into its blind rhythm).",
+    "Command: Charge the stairwell that curls upward, smashing each light with the wrench (Risk: total darkness; Payoff: reset the space before it seals)."
   ],
   "choices_short": [
-    "Wedge door, stall Hunter",
-    "Grab orb, bend gravity",
-    "Shadow the Hunter's wake"
+    "Hit the sideways exit",
+    "Hold breath in shadows",
+    "Smash lights, reset loop"
   ]
 }
 
 Weak Example (avoid this):
 {
-  "scenario_display": "You run down a hallway. A monster is behind you. You feel scared. Decide what to do.",
+  "scenario_display": "You run in a hallway. A monster might be behind you. You feel nervous. Decide what to do next.",
   "veo_prompt": "Context: You are in a maze.
 Action 0-2s: Run.
 Action 2-5s: Look back.
@@ -1242,7 +1244,7 @@ Action 5-8s: Keep running.
 Camera: First-person.
 Audio: Breathing.
 FX: Flickering lights.
-Momentum Escape: Keep going forward.",
+Momentum Pursuit: Keep going forward.",
   "choices": [
     "Command: Keep running.",
     "Command: Hide.",
@@ -1253,16 +1255,16 @@ Momentum Escape: Keep going forward.",
 
 Rules:
 1) The 'veo_prompt' must be the exact text we send to Veo 3.1 via the Gemini API.
-   - Begin with "Context (not visible in video, only for AI guidance): ..." to recap continuity and nightmare constraints.
-   - Follow with the lines below **exactly in this order**, each written as present-tense fragments overflowing with sensory overload and frantic motion.
+   - Begin with "Context (not visible in video, only for AI guidance): ..." to recap continuity and grounded nightmare constraints.
+   - Follow with the lines below **exactly in this order**, each written as present-tense fragments packed with physical detail and mounting fear.
        * "Action 0-2s: ..."
        * "Action 2-5s: ..."
        * "Action 5-8s: ..."
        * "Camera: ..."
        * "Audio: ..."
        * "FX: ..."
-       * "Momentum Escape: ..." (describe the next impossible door, stairwell, or reality glitch that feels like salvation yet threatens to snap shut.)
-   - Each line must stay <= 22 words and braid kinetic verbs with warped spatial cues.
+       * "Momentum Pursuit: ..." (state the next apparent escape vector and the threat if the Runner hesitates.)
+   - Each line must stay <= 22 words and braid kinetic verbs with tactile horror cues.
    - Assume the engine feeds Veo the full prior video, so design seamless momentum across cuts (matching motion, camera, props, and spatial anomalies).
 
 2) Safety & platform constraints (strict):
@@ -1272,23 +1274,23 @@ Rules:
    - Avoid hate, sexual content, excessive gore, or self-harm imagery.
 
 3) Continuity:
-   - Maintain consistent Runner POV, labyrinth architecture, lighting palette, and the Hunter's sensory signatures unless a choice justifies a surreal shift.
+   - Maintain the Runner POV, hospital-meets-labyrinth setting, lighting palette, and the Hunter's hinted silhouette unless a choice justifies a surreal shift.
    - Ensure smooth shot-to-shot transitions; the new beat should feel like the same take continuing from the previous clip.
 
 4) Choices:
    - Provide exactly three distinct options for what the player can do next.
    - Format each entry as "Command: <high-velocity action> (Risk: <danger>; Payoff: <fraught gain>)" so risk/reward stays unmistakable.
-   - Keep each entry <= 22 words, packed with muscular verbs, and ensure all three actions diverge dramatically in spatial logic (e.g., vertical defiance, sideways gravity, doubling back through echoes).
+   - Keep each entry <= 22 words, loaded with decisive horror verbs, and ensure the three actions diverge in tactic (rush, hide, confront, misdirect, etc.).
    - Provide a matching `choices_short` array: same order, each entry <= 12 words, phrased as urgent imperatives that hint at the payoff.
 
 5) Scenario essentials (aligned to BASE_PROMPT and PROMPT_GUIDANCE):
-   - Tone: Oppressive, surreal psychological horror in ragged first-person breaths; dread must escalate every beat.
-   - Movement: Runner is always in motion--sprinting, sliding, scrambling--while geometry twists mid-shot.
-   - Environment: Architecture loops and contradicts itself; emphasize impossible angles, living walls, echoing chambers, and paradox staircases.
-   - Objective: Showcase desperate grabs at escape that mutate or loop; every beat should taunt with hope before it snaps.
-   - Hunter: Keep the pursuing entity near--glimpsed as shadow, breath, claw, or echo--so the chase feels inescapable.
-   - Sensory: Layer distorted audio-visual cues (reverse whispers, gravity pulses, smear-lights) heightening the hallucination.
-   - Hook: End with an imminent rupture--wall closing, gravity inverting, Hunter phasing through stone--that demands an immediate choice.
+   - Tone: Survival horror; dread climbs every beat.
+   - Movement: Runner stays moving--sprinting, sliding, bracing--even when space folds.
+   - Environment: Tangible hospital decay fused with impossible geometry.
+   - Objective: Every glimpse of escape mutates or loops.
+   - Hunter: Presence is constant through audio and glimpses, rarely full frame.
+   - Sensory: Use grounded sounds and lighting glitches to sell reality slipping.
+   - Hook: Finish with a trap springing or the Hunter crashing in, demanding an immediate choice.
 
 6) Pacing & shot design:
    - Each 8-second beat must deliver a complete moment (setup -> escalation -> visible consequence) that worsens the Runner's predicament or warps reality further.
@@ -1299,15 +1301,16 @@ Rules:
    - Keep urgency palpable: layer vicious verbs, collapsing architecture, claw swipes, vertigo-inducing drops, or close calls every beat.
    - Thread in micro-stakes (e.g., oxygen thinning, sanity fraying, floor dissolving) so tension keeps spiking.
    - Ban languid words like "pauses", "calm", or "regains composure". If motion slows, frame it as a tremor before violent acceleration.
-   - Ensure "Action" lines, "Camera", "Audio", "FX", and "Momentum Escape" interlock--each camera move should amplify the distorted space, soundscape, and looming Hunter.
+   - Ensure "Action" lines, "Camera", "Audio", "FX", and "Momentum Pursuit" interlock--each camera move should amplify the distorted space, soundscape, and looming Hunter.
 
 8) Scenario_display tone:
    - Narration should read like a breathless, reality-fractured field report with at least three charged verbs (fractures, ricochets, spirals, detonates, etc.).
-   - Always hint at the hallucinated exit that seems reachable and the crawling presence that will close the trap within seconds.
+   - Always hint at the tempting exit and the encroaching Hunter that will seal it shut within seconds.
    - End on a cliffhanger sentence that demands an immediate choice ("If you hesitate, the hallway snaps shut.").
 
 9) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
+
 
 
 
