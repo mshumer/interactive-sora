@@ -103,8 +103,7 @@ WATCHDOG_INTERVAL_SECONDS = int(os.environ.get("WATCHDOG_INTERVAL_SECONDS", "60"
 CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "veo-shared-world")
 
 DEFAULT_PROMPT_GUIDANCE = (
-    "
-".join(
+    "\n".join(
         [
             "Tone: Slow-burn survival horror focused on isolation and mounting dread; tension ratchets without overt combat.",
             "Perspective: Camera welded to the Runner's POV; flashlight or headlamp leads the frame with hands and breath visible.",
