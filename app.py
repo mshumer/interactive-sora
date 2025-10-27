@@ -986,6 +986,7 @@ def render_scene_video(
     new_context_seconds = DEFAULT_SECONDS
     context_video_uri: Optional[str] = None
     uploaded_resource_names: List[str] = []
+    used_fallback = False
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -1003,12 +1004,12 @@ def render_scene_video(
             )
 
             reference_input: Optional[object] = None
-            if parent_context_uri:
-                reference_input = genai_types.File(uri=parent_context_uri)
-            elif parent_context_path and parent_context_path.exists():
+            if parent_context_path and parent_context_path.exists():
                 reference_input = parent_context_path
+            elif parent_context_uri:
+                reference_input = genai_types.File(uri=parent_context_uri)
 
-            client, operation, uploaded_resource_names = veo_create_video(
+            client, operation, uploaded_resource_names, used_fallback = veo_create_video(
                 api_key=api_key,
                 veo_prompt=veo_prompt,
                 model=VEO_MODEL,
@@ -1039,7 +1040,7 @@ def render_scene_video(
             combined_duration = _video_duration_seconds(combined_path)
 
             clip_path = combined_path
-            if parent_context_path is not None:
+            if parent_context_path is not None and not used_fallback:
                 clip_path = tmp_dir_path / "veo_clip.mp4"
                 extract_tail_segment(
                     combined_path,
@@ -1745,7 +1746,7 @@ def veo_create_video(
         getattr(operation, "name", None),
         used_fallback,
     )
-    return client, operation, uploaded_resource_names
+    return client, operation, uploaded_resource_names, used_fallback
 
 def veo_poll_until_complete(
     client,
@@ -2003,7 +2004,7 @@ def generate_scene_video(
             f"Context video exceeds Veo's {MAX_CONTEXT_SECONDS}-second limit (got {context_seconds:.2f}s)."
         )
 
-    client, operation, uploaded_resource_names = veo_create_video(
+    client, operation, uploaded_resource_names, used_fallback = veo_create_video(
         api_key=api_key,
         veo_prompt=veo_prompt,
         model=model,
@@ -2026,7 +2027,7 @@ def generate_scene_video(
     combined_duration = _video_duration_seconds(combined_path)
 
     clip_path = VIDEO_DIR / f"{token}.mp4"
-    if context_video is not None:
+    if context_video is not None and not used_fallback:
         logger.debug(
             "[veo] trimming clip seconds=%s combined=%s -> clip=%s",
             seconds,
