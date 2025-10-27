@@ -674,6 +674,7 @@ def _generate_scene_inner(
             path,
             planner_result["veo_prompt"],
             video_api_key,
+            contributor_hash,
             cancel_event,
         )
     except SceneCancelled:
@@ -902,12 +903,15 @@ def render_scene_video(
     path: str,
     veo_prompt: str,
     api_key: str,
+    contributor_hash: str,
     cancel_event: threading.Event,
 ) -> Tuple[StoredAsset, int, Optional[str]]:
     parent_context_path: Optional[Path] = None
     parent_context_seconds: float = 0.0
     parent_context_uri: Optional[str] = None
+    parent_clip_path: Optional[Path] = None
     parent_last_frame_path: Optional[Path] = None
+    same_contributor = False
     parent = parent_path(path)
     if parent is not None:
         with session_scope() as session:
@@ -925,12 +929,22 @@ def render_scene_video(
                 parent,
                 getattr(parent_scene, "status", None),
             )
+            parent_contributor_hash = getattr(parent_scene, "contributor_hash", None)
+            if contributor_hash and parent_contributor_hash:
+                same_contributor = contributor_hash == parent_contributor_hash
+            logger.info(
+                "[continuity] contributor match=%s parent_hash=%s current_hash=%s",
+                same_contributor,
+                parent_contributor_hash,
+                contributor_hash,
+            )
             source_value: Optional[str] = None
             variant = "context"
+            clip_source = getattr(parent_scene, "video_url", None)
             if parent_scene.context_video_url:
                 source_value = parent_scene.context_video_url
-            elif parent_scene.video_url:
-                source_value = parent_scene.video_url
+            elif clip_source:
+                source_value = clip_source
                 variant = "video"
             if source_value:
                 parent_context_path = download_asset(source_value, variant=variant)
@@ -941,8 +955,25 @@ def render_scene_video(
                         variant,
                     )
                 else:
+                    parent_context_path = None
                     logger.warning(
                         "[continuity] failed to obtain context video for world=%s path=%s",
+                        world_id,
+                        path or "root",
+                    )
+            if variant == "video" and parent_context_path is not None:
+                parent_clip_path = parent_context_path if parent_context_path.exists() else None
+            elif same_contributor and clip_source:
+                parent_clip_candidate = download_asset(clip_source, variant="video")
+                if isinstance(parent_clip_candidate, Path) and parent_clip_candidate.exists():
+                    parent_clip_path = parent_clip_candidate
+                    logger.info(
+                        "[continuity] prior clip ready at %s for contributor reuse",
+                        parent_clip_path,
+                    )
+                else:
+                    logger.warning(
+                        "[continuity] failed to obtain prior clip for world=%s path=%s",
                         world_id,
                         path or "root",
                     )
@@ -1015,6 +1046,13 @@ def render_scene_video(
             reference_input: Optional[object] = None
             if parent_context_uri:
                 reference_input = genai_types.File(uri=parent_context_uri)
+            elif parent_context_path and parent_context_path.exists():
+                reference_input = parent_context_path
+
+            fallback_reference_input: Optional[object] = None
+            if same_contributor and parent_clip_path and parent_clip_path.exists():
+                if not (isinstance(reference_input, Path) and parent_clip_path == reference_input):
+                    fallback_reference_input = parent_clip_path
 
             client, operation, uploaded_resource_names, used_fallback = veo_create_video(
                 api_key=api_key,
@@ -1023,6 +1061,7 @@ def render_scene_video(
                 aspect_ratio=VEO_ASPECT_RATIO,
                 seconds=DEFAULT_SECONDS,
                 reference_video=reference_input,
+                fallback_reference_video=fallback_reference_input,
                 first_frame_image=parent_last_frame_path,
                 client=client,
             )
@@ -1118,6 +1157,8 @@ def render_scene_video(
     finally:
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
+        if parent_clip_path and parent_clip_path.exists() and parent_clip_path is not parent_context_path:
+            parent_clip_path.unlink(missing_ok=True)
         if parent_last_frame_path and parent_last_frame_path.exists():
             parent_last_frame_path.unlink(missing_ok=True)
         try:
@@ -1679,48 +1720,47 @@ def veo_create_video(
     aspect_ratio: str,
     seconds: int,
     reference_video: Optional[object] = None,
+    fallback_reference_video: Optional[object] = None,
     first_frame_image: Optional[Path] = None,
     client: Optional[genai.Client] = None,
 ):
     client = client or _build_genai_client(api_key)
 
-    video_arg = None
     uploaded_resource_names: List[str] = []
-    if reference_video is not None:
-        if hasattr(reference_video, "uri"):
-            video_arg = reference_video
-            logger.debug("[veo] using existing Gemini file handle for context")
-        elif isinstance(reference_video, Path) and reference_video.exists():
+
+    def _prepare_reference(ref: Optional[object]) -> Optional[object]:
+        if ref is None:
+            return None
+        if hasattr(ref, "uri"):
+            logger.debug(
+                "[veo] using existing Gemini file handle for context (uri=%s)",
+                getattr(ref, "uri", None),
+            )
+            return ref
+        if isinstance(ref, Path) and ref.exists():
             upload = client.files.upload(
-                file=str(reference_video),
+                file=str(ref),
                 config=genai_types.UploadFileConfig(mime_type="video/mp4"),
             )
-            uploaded_name = getattr(upload, "name", None) if not isinstance(upload, str) else upload
+            if isinstance(upload, str):
+                uploaded_name = upload
+            else:
+                uploaded_name = getattr(upload, "name", None)
+            fetched = upload
             if uploaded_name is not None:
                 uploaded_resource_names.append(uploaded_name)
                 fetched = client.files.get(name=uploaded_name)
-            else:
-                fetched = upload
             video_uri = getattr(fetched, "uri", None) or getattr(fetched, "download_uri", None)
             if not video_uri:
                 raise RuntimeError("Uploaded reference video missing URI")
-            video_arg = genai_types.Video(uri=video_uri)
             logger.info(
                 "[veo] uploaded context video name=%s uri=%s",
                 uploaded_name,
                 video_uri,
             )
-        else:
-            logger.warning("[veo] unsupported reference_video type=%s", type(reference_video))
-
-    logger.info(
-        "[veo] invoking generate_videos model=%s seconds=%s aspect=%s context=%s",
-        model,
-        seconds,
-        aspect_ratio,
-        bool(video_arg),
-    )
-    logger.debug("[veo] prompt=%s", veo_prompt)
+            return genai_types.Video(uri=video_uri)
+        logger.warning("[veo] unsupported reference video type=%s", type(ref))
+        return None
 
     config_obj = genai_types.GenerateVideosConfig(
         duration_seconds=seconds,
@@ -1729,33 +1769,59 @@ def veo_create_video(
         number_of_videos=1,
     )
 
-    used_fallback = False
+    attempts: List[Tuple[str, Optional[object]]] = []
+    if reference_video is not None:
+        attempts.append(("branch_context", reference_video))
+    if fallback_reference_video is not None:
+        attempts.append(("previous_clip", fallback_reference_video))
 
-    try:
-        operation = client.models.generate_videos(
-            model=model,
-            prompt=veo_prompt,
-            video=video_arg,
-            config=config_obj,
-        )
-    except Exception as exc:  # pragma: no cover - upstream errors propagate
-        if (
-            first_frame_image is not None
-            and first_frame_image.exists()
-            and (
-                _is_permission_denied_file_error(exc)
-                or _is_invalid_context_video_error(exc)
-            )
-        ):
+    operation = None
+    used_fallback = False
+    context_variant = "none"
+    last_retryable_exc: Optional[Exception] = None
+
+    def _is_retryable(exc: Exception) -> bool:
+        return _is_permission_denied_file_error(exc) or _is_invalid_context_video_error(exc)
+
+    for label, candidate in attempts:
+        try:
+            video_arg = _prepare_reference(candidate)
+        except Exception as prep_exc:
             logger.warning(
-                "[veo] context video unavailable (%s); retrying with first-frame fallback",
-                exc,
+                "[veo] failed to prepare reference '%s': %s",
+                label,
+                prep_exc,
             )
+            last_retryable_exc = prep_exc
+            continue
+        try:
+            operation = client.models.generate_videos(
+                model=model,
+                prompt=veo_prompt,
+                video=video_arg,
+                config=config_obj,
+            )
+            context_variant = label
+            break
+        except Exception as exc:  # pragma: no cover - upstream errors propagate
+            if _is_retryable(exc):
+                logger.warning(
+                    "[veo] context attempt '%s' failed with retryable error: %s",
+                    label,
+                    exc,
+                )
+                last_retryable_exc = exc
+                continue
+            raise RuntimeError(f"Veo create failed: {exc}") from exc
+
+    if operation is None:
+        if first_frame_image is not None and first_frame_image.exists():
+            logger.warning("[veo] context retries exhausted; using first-frame fallback")
             try:
                 image_bytes = first_frame_image.read_bytes()
             except Exception as read_exc:
                 raise RuntimeError(
-                    "Veo create failed: context video forbidden and fallback frame unavailable"
+                    "Veo create failed: context unavailable and fallback frame unreadable"
                 ) from read_exc
 
             image_arg = genai_types.Image(
@@ -1770,19 +1836,27 @@ def veo_create_video(
                     config=config_obj,
                 )
                 used_fallback = True
+                context_variant = "first_frame_image"
             except Exception as fallback_exc:  # pragma: no cover - upstream errors propagate
                 raise RuntimeError(
                     f"Veo create failed after fallback: {fallback_exc}"
                 ) from fallback_exc
         else:
-            raise RuntimeError(f"Veo create failed: {exc}") from exc
+            reason = last_retryable_exc or RuntimeError(
+                "No usable context reference available and no fallback frame provided"
+            )
+            if isinstance(reason, Exception):
+                raise RuntimeError(f"Veo create failed: {reason}") from reason
+            raise RuntimeError("Veo create failed: no context available")
 
     logger.info(
-        "[veo] generation started operation=%s fallback=%s",
+        "[veo] generation started operation=%s context=%s image_fallback=%s",
         getattr(operation, "name", None),
+        context_variant,
         used_fallback,
     )
     return client, operation, uploaded_resource_names, used_fallback
+
 
 def veo_poll_until_complete(
     client,
