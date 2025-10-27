@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import math
+import mimetypes
 import re
 import shutil
 import subprocess
@@ -897,6 +898,7 @@ def render_scene_video(
     parent_context_path: Optional[Path] = None
     parent_context_seconds: float = 0.0
     parent_context_uri: Optional[str] = None
+    parent_last_frame_path: Optional[Path] = None
     parent = parent_path(path)
     if parent is not None:
         with session_scope() as session:
@@ -941,6 +943,21 @@ def render_scene_video(
             if stored_total is not None:
                 parent_context_seconds = float(stored_total)
             parent_context_uri = getattr(parent_scene, "context_video_uri", None)
+            poster_source = getattr(parent_scene, "poster_url", None)
+            if poster_source:
+                parent_last_frame_path = download_asset(poster_source, variant="poster")
+                if parent_last_frame_path and parent_last_frame_path.exists():
+                    logger.info(
+                        "[continuity] final frame ready at %s",
+                        parent_last_frame_path,
+                    )
+                else:
+                    parent_last_frame_path = None
+                    logger.warning(
+                        "[continuity] failed to obtain final frame image for world=%s path=%s",
+                        world_id,
+                        path or "root",
+                    )
         else:
             logger.warning("[continuity] missing parent scene world=%s parent_path=%s", world_id, parent)
     if parent_context_path and parent_context_path.exists():
@@ -968,7 +985,7 @@ def render_scene_video(
     asset: Optional[StoredAsset] = None
     new_context_seconds = DEFAULT_SECONDS
     context_video_uri: Optional[str] = None
-    uploaded_context_name: Optional[str] = None
+    uploaded_resource_names: List[str] = []
 
     try:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -991,13 +1008,14 @@ def render_scene_video(
             elif parent_context_path and parent_context_path.exists():
                 reference_input = parent_context_path
 
-            client, operation, uploaded_context_name = veo_create_video(
+            client, operation, uploaded_resource_names = veo_create_video(
                 api_key=api_key,
                 veo_prompt=veo_prompt,
                 model=VEO_MODEL,
                 aspect_ratio=VEO_ASPECT_RATIO,
                 seconds=DEFAULT_SECONDS,
                 reference_video=reference_input,
+                first_frame_image=parent_last_frame_path,
                 client=client,
             )
 
@@ -1077,10 +1095,12 @@ def render_scene_video(
     finally:
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
+        if parent_last_frame_path and parent_last_frame_path.exists():
+            parent_last_frame_path.unlink(missing_ok=True)
         try:
-            if uploaded_context_name is not None:
-                logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
-                client.files.delete(name=uploaded_context_name)
+            for resource_name in uploaded_resource_names:
+                logger.debug("[veo] deleting context upload name=%s", resource_name)
+                client.files.delete(name=resource_name)
         except Exception:
             logger.debug("[veo] context file deletion skipped", exc_info=True)
 
@@ -1604,6 +1624,21 @@ Return JSON with keys: scenario_display, veo_prompt, choices (3), choices_short 
 # === Veo Helpers ===
 
 
+def _is_permission_denied_file_error(exc: Exception) -> bool:
+    text = str(exc) if exc else ''
+    if not text:
+        return False
+    text_upper = text.upper()
+    return 'PERMISSION_DENIED' in text_upper and 'FILE' in text_upper and 'PERMISSION' in text_upper
+
+
+def _image_mime_type(image_path: Path) -> str:
+    guessed, _ = mimetypes.guess_type(str(image_path))
+    if guessed:
+        return guessed
+    return 'image/jpeg'
+
+
 def veo_create_video(
     api_key: str,
     veo_prompt: str,
@@ -1611,12 +1646,13 @@ def veo_create_video(
     aspect_ratio: str,
     seconds: int,
     reference_video: Optional[object] = None,
+    first_frame_image: Optional[Path] = None,
     client: Optional[genai.Client] = None,
 ):
     client = client or _build_genai_client(api_key)
 
     video_arg = None
-    uploaded_context_name: Optional[str] = None
+    uploaded_resource_names: List[str] = []
     if reference_video is not None:
         if hasattr(reference_video, "uri"):
             video_arg = reference_video
@@ -1626,46 +1662,90 @@ def veo_create_video(
                 file=str(reference_video),
                 config=genai_types.UploadFileConfig(mime_type="video/mp4"),
             )
-            uploaded_context_name = getattr(upload, "name", None) if not isinstance(upload, str) else upload
-            fetched = client.files.get(name=uploaded_context_name)
+            uploaded_name = getattr(upload, "name", None) if not isinstance(upload, str) else upload
+            if uploaded_name is not None:
+                uploaded_resource_names.append(uploaded_name)
+                fetched = client.files.get(name=uploaded_name)
+            else:
+                fetched = upload
             video_uri = getattr(fetched, "uri", None) or getattr(fetched, "download_uri", None)
             if not video_uri:
                 raise RuntimeError("Uploaded reference video missing URI")
             video_arg = genai_types.Video(uri=video_uri)
             logger.info(
                 "[veo] uploaded context video name=%s uri=%s",
-                uploaded_context_name,
+                uploaded_name,
                 video_uri,
             )
         else:
             logger.warning("[veo] unsupported reference_video type=%s", type(reference_video))
 
+    logger.info(
+        "[veo] invoking generate_videos model=%s seconds=%s aspect=%s context=%s",
+        model,
+        seconds,
+        aspect_ratio,
+        bool(video_arg),
+    )
+    logger.debug("[veo] prompt=%s", veo_prompt)
+
+    config_obj = genai_types.GenerateVideosConfig(
+        duration_seconds=seconds,
+        aspect_ratio=aspect_ratio,
+        resolution="720p",
+        number_of_videos=1,
+    )
+
+    used_fallback = False
+
     try:
-        logger.info(
-            "[veo] invoking generate_videos model=%s seconds=%s aspect=%s context=%s",
-            model,
-            seconds,
-            aspect_ratio,
-            bool(video_arg),
-        )
-        logger.debug("[veo] prompt=%s", veo_prompt)
         operation = client.models.generate_videos(
             model=model,
             prompt=veo_prompt,
             video=video_arg,
-            config=genai_types.GenerateVideosConfig(
-                duration_seconds=seconds,
-                aspect_ratio=aspect_ratio,
-                resolution="720p",
-                number_of_videos=1,
-            ),
+            config=config_obj,
         )
     except Exception as exc:  # pragma: no cover - upstream errors propagate
-        raise RuntimeError(f"Veo create failed: {exc}") from exc
+        if (
+            first_frame_image is not None
+            and first_frame_image.exists()
+            and _is_permission_denied_file_error(exc)
+        ):
+            logger.warning(
+                "[veo] context video permission denied; retrying with first-frame fallback"
+            )
+            try:
+                image_bytes = first_frame_image.read_bytes()
+            except Exception as read_exc:
+                raise RuntimeError(
+                    "Veo create failed: context video forbidden and fallback frame unavailable"
+                ) from read_exc
 
-    logger.info("[veo] generation started operation=%s", getattr(operation, "name", None))
-    return client, operation, uploaded_context_name
+            image_arg = genai_types.Image(
+                image_bytes=image_bytes,
+                mime_type=_image_mime_type(first_frame_image),
+            )
+            try:
+                operation = client.models.generate_videos(
+                    model=model,
+                    prompt=veo_prompt,
+                    image=image_arg,
+                    config=config_obj,
+                )
+                used_fallback = True
+            except Exception as fallback_exc:  # pragma: no cover - upstream errors propagate
+                raise RuntimeError(
+                    f"Veo create failed after fallback: {fallback_exc}"
+                ) from fallback_exc
+        else:
+            raise RuntimeError(f"Veo create failed: {exc}") from exc
 
+    logger.info(
+        "[veo] generation started operation=%s fallback=%s",
+        getattr(operation, "name", None),
+        used_fallback,
+    )
+    return client, operation, uploaded_resource_names
 
 def veo_poll_until_complete(
     client,
@@ -1923,7 +2003,7 @@ def generate_scene_video(
             f"Context video exceeds Veo's {MAX_CONTEXT_SECONDS}-second limit (got {context_seconds:.2f}s)."
         )
 
-    client, operation, uploaded_context_name = veo_create_video(
+    client, operation, uploaded_resource_names = veo_create_video(
         api_key=api_key,
         veo_prompt=veo_prompt,
         model=model,
@@ -1980,9 +2060,9 @@ def generate_scene_video(
         context_video_uri = getattr(video_node, "uri", None) or getattr(video_node, "name", None)
 
     try:
-        if uploaded_context_name is not None:
-            logger.debug("[veo] deleting context upload name=%s", uploaded_context_name)
-            client.files.delete(name=uploaded_context_name)
+        for resource_name in uploaded_resource_names:
+            logger.debug("[veo] deleting context upload name=%s", resource_name)
+            client.files.delete(name=resource_name)
     except Exception:
         logger.debug("[veo] preset context file deletion skipped", exc_info=True)
 
