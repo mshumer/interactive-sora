@@ -6,7 +6,7 @@
 
 **One canonical choose-your-own adventure world, expanded by the community.**
 
-The shared canon is now a portal-hopping multiverse: the Courier chases chronoglyph shards through remixed takes on famous game worlds (neon Vice City vibes, rune-soaked gothic battlefields, clockwork fantasy cities) to seal the Cataclysm Rift. Every 7-second beat delivers a high-energy action moment and sets up the next choice. When a branch already exists its video plays instantly; if not, explorers can contribute their own Gemini (Veo 3.1) key—plus an OpenAI planner key if they want—to mint the clip for everyone else.
+The shared canon is now a portal-hopping multiverse: the Courier chases chronoglyph shards through remixed takes on famous game worlds (neon Vice City vibes, rune-soaked gothic battlefields, clockwork fantasy cities) to seal the Cataclysm Rift. Every 8-second beat delivers a high-energy action moment and sets up the next choice. When a branch already exists its video plays instantly; if not, explorers can contribute their own Gemini key (used for both Veo renders and planning) to mint the clip for everyone else.
 
 ---
 
@@ -19,7 +19,7 @@ The shared canon is now a portal-hopping multiverse: the Courier chases chronogl
 
 The script installs backend/frontend deps, spins up FastAPI on `http://localhost:8000`, and serves the React UI on `http://localhost:5173`.
 
-The world boots with a placeholder base prompt. First-time explorers are asked for a Gemini API key (to render Veo clips) and optionally an OpenAI key (for planning/summaries) the first time they select an ungenerated branch. Keys stay in `localStorage` and never leave the browser.
+The world boots with a placeholder base prompt. First-time explorers are asked for a Gemini API key (used for Veo renders and Gemini 2.5 Pro planning) the first time they select an ungenerated branch. Keys stay in `localStorage` and never leave the browser.
 
 ---
 
@@ -38,10 +38,10 @@ The world boots with a placeholder base prompt. First-time explorers are asked f
 | --- | --- | --- |
 | `WORLD_ID` | `default` | Namespace for this shared world. |
 | `WORLD_BASE_PROMPT` | multiverse chase narrative | Cinematic seed prompt used for the very first scene. Override to reskin the world. |
-| `PLANNER_MODEL` | `gpt-5` | Planner model passed to the Responses API. |
+| `PLANNER_MODEL` | `gemini-2.5-pro` | Planner model passed to Gemini text generation. |
 | `VEO_MODEL` | `veo-3.1-generate-preview` | Model name forwarded to the Gemini `/models/*:predictLongRunning` endpoint. |
 | `GEMINI_API_BASE` | `https://generativelanguage.googleapis.com/v1beta` | Override to point at a different Gemini endpoint if needed. |
-| `VIDEO_SIZE` | `1280x720` | Render resolution for all clips (also used to infer Veo aspect ratio). |
+| `VIDEO_SIZE` | `1980x1080` | Render resolution for all clips (also used to infer Veo aspect ratio). |
 | `DATABASE_URL` | `sqlite:///./veo_world.db` | SQLAlchemy connection string. Supply your Railway/Supabase URL in production. |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` | — | Cloudflare R2 credentials. If unset, assets fall back to local disk (`storage/`). |
 | `R2_PUBLIC_BASE_URL` | — | Optional CDN base (e.g. `https://media.example.com`). |
@@ -51,7 +51,7 @@ The world boots with a placeholder base prompt. First-time explorers are asked f
 | `WATCHDOG_INTERVAL_SECONDS` | `60` | How often the timeout watchdog scans for stale jobs. |
 | `CONTRIBUTOR_SALT` | `veo-shared-world` | Salt used when hashing contributor metadata. |
 | `WORLD_PROMPT_GUIDANCE` | — | Optional extra flavor/examples injected into every planner call. |
-| `STATE_SUMMARY_MODEL` | `gpt-5-mini` | Model used to summarise each scene’s evolving world state (set to blank to disable). |
+| `STATE_SUMMARY_MODEL` | `gemini-2.5-pro` | Model used to summarise each scene’s evolving world state (set to blank to disable). |
 
 For local hacking you can skip the R2 vars—videos will be copied into `storage/` automatically.
 
@@ -62,6 +62,32 @@ uvicorn app:app --reload
 ```
 
 On first load the root scene is `pending`. Launch the UI at `http://localhost:5173`, click the highlighted branch, and drop in your key to mint the opening clip.
+
+---
+
+## Admin Dashboard
+
+Operate the shared world safely from the built-in admin panel:
+
+1. Set or update the admin password (stored as an Argon2 hash):
+
+   ```bash
+   source .venv/bin/activate  # if you use the bundled virtualenv
+   python tools/set_admin_password.py
+   ```
+
+2. Visit `http://localhost:8000/admin` and sign in with that password.
+
+The dashboard lets you:
+
+- Filter by path prefix to inspect generated scenes.
+- Preview videos inline (including continuity clips).
+- View child status, storage footprint, and quick metadata.
+- Reset any branch (or the entire world) in one click—this cancels in-flight generations, deletes associated media (local storage or R2), removes metrics, and prunes the scene tree so it can be regenerated cleanly.
+
+**Canvas explorer.** The default view is a pan/zoom canvas showing the branch tree with live thumbnails. Click a node to load its clip in the inspector, double-click to collapse/expand a subtree, drag to pan, and use the toolbar or mouse wheel to zoom. The inspector’s controls let you play clips, open the larger preview modal, or recycle the selected branch instantly. A fallback List view remains available from the Canvas/List toggle.
+
+Sessions are stored in a signed, HttpOnly cookie (auto-expiring after 14 days or immediately on password rotation). Login attempts are rate limited, and the admin page is locked behind SameSite=Strict cookies and hardened response headers.
 
 ---
 
@@ -84,11 +110,11 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 - Config screen removed—players jump straight into the world.
 - Choices with cached clips are highlighted, signalling instant playback.
 - Selecting an unexplored branch prompts for a key (with cancel option to pick another path).
-- Keys persist in `localStorage` under `veo_shared_world_video_api_key` (Veo) and `veo_shared_world_planner_api_key` (OpenAI).
+- Keys persist in `localStorage` under `veo_shared_world_video_api_key` (Veo) and `veo_shared_world_planner_api_key` (planner).
 - Storyboard/timeline reflects the canonical branch status in real time.
 - Active generations surface live progress so explorers can see how close a branch is to finishing.
-- Behind the scenes, each scene stores a state summary (generated with `gpt-5-mini`) so future branches carry forward the evolving world context.
-- Planner prompts now emphasise a full 7-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
+- Behind the scenes, each scene stores a state summary (generated with Gemini 2.5 Pro) so future branches carry forward the evolving world context.
+- Planner prompts now emphasise a full 8-second action beat (setup → escalation → outcome) so every clip lands a decisive moment before offering new choices.
 - The Nexus Gate opening beat presents three mysterious portals; hit **Restart** anytime to return there and choose a different world with instant playback of already-generated branches.
 
 ---
@@ -96,8 +122,8 @@ All writes are serialized per `worldId + path`, so only the first explorer to cl
 ## Veo 3.1 Continuity
 
 - Each freshly generated beat is stitched onto the entire path-to-date using Veo 3.1 scene extension, so every new prompt sees the full video context instead of a single poster frame.
-- The backend stores both the delivered 7-second clip and the aggregated continuity file for future generations.
-- Veo's current extension limit is 141 seconds of source video; the service automatically guards against longer branches and asks players to restart earlier if needed.
+- The backend stores both the delivered 8-second clip and the aggregated continuity file for future generations.
+- Veo's preview tier only accepts ~20 seconds of Veo-processed footage per extension; if you exceed it the service will ask you to restart earlier in the branch.
 
 ---
 
