@@ -493,6 +493,13 @@
   line-height: 1.5;
 }
 
+.key-modal .key-modal-disclaimer {
+  margin-top: -0.6rem;
+  margin-bottom: 1.6rem;
+  font-size: 0.88rem;
+  color: rgba(226, 232, 240, 0.8);
+}
+
 .key-modal a.key-modal-link {
   color: rgba(191, 219, 254, 0.95);
   font-weight: 600;

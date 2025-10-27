@@ -597,6 +597,9 @@ const ApiKeysModal = ({ initialKey, onSubmit, onCancel }) => {
           </a>{" "}
           to create it. The key stays in your browser and powers both Veo renders and Gemini 2.5 Pro planning.
         </p>
+        <p className="key-modal-disclaimer">
+          You are solely responsible for managing your Gemini API usage and any costs billed to your account.
+        </p>
         <form onSubmit={handleSubmit}>
           <label>
             <span>Gemini API key</span>
