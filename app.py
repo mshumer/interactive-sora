@@ -1162,7 +1162,9 @@ def download_asset(stored_value: str, variant: str) -> Optional[Path]:
 def hash_contributor(api_key: str, path: str) -> str:
     import hashlib
 
-    payload = f"{CONTRIBUTOR_SALT}:{path}:{api_key}".encode("utf-8")
+    normalized_key = (api_key or "").strip()
+    normalized_salt = CONTRIBUTOR_SALT or "veo-shared-world"
+    payload = f"{normalized_salt}:{normalized_key}".encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
