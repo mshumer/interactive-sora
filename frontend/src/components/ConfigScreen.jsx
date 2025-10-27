@@ -21,11 +21,11 @@ const PRESETS = [
 
 const PLANNER_KEY_STORAGE = "veo_shared_world_planner_api_key";
 const VIDEO_KEY_STORAGE = "veo_shared_world_video_api_key";
+const GEMINI_KEY_STORAGE = "veo_shared_world_gemini_api_key";
 
 const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
   const [form, setForm] = useState({
-    plannerApiKey: "",
-    videoApiKey: "",
+    apiKey: "",
     plannerModel: "gemini-2.5-pro",
     veoModel: "veo-3.1-generate-preview",
     videoSize: "1280x720",
@@ -35,42 +35,33 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedPlanner =
-      window.localStorage.getItem(PLANNER_KEY_STORAGE) ||
+    const storedGemini =
+      window.localStorage.getItem(GEMINI_KEY_STORAGE) ||
       window.localStorage.getItem("sora_cyoa_api_key") ||
       "";
-    const storedVideo =
-      window.localStorage.getItem(VIDEO_KEY_STORAGE) ||
-      window.localStorage.getItem("sora_cyoa_api_key") ||
-      storedPlanner ||
-      "";
-    if (storedPlanner || storedVideo) {
+    const storedPlanner = window.localStorage.getItem(PLANNER_KEY_STORAGE) || "";
+    const storedVideo = window.localStorage.getItem(VIDEO_KEY_STORAGE) || "";
+    const effectiveKey = storedGemini || storedVideo || storedPlanner;
+    if (effectiveKey) {
       setForm((prev) => ({
         ...prev,
-        plannerApiKey: storedPlanner || storedVideo,
-        videoApiKey: storedVideo,
+        apiKey: effectiveKey,
       }));
     }
   }, []);
 
-  const maskedPlanner = useMemo(() => {
-    if (!form.plannerApiKey) return "";
-    return form.plannerApiKey.replace(/.(?=.{4})/g, "·");
-  }, [form.plannerApiKey]);
-
-  const maskedVideo = useMemo(() => {
-    if (!form.videoApiKey) return "";
-    return form.videoApiKey.replace(/.(?=.{4})/g, "·");
-  }, [form.videoApiKey]);
+  const maskedApiKey = useMemo(() => {
+    if (!form.apiKey) return "";
+    return form.apiKey.replace(/.(?=.{4})/g, "·");
+  }, [form.apiKey]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (typeof window === "undefined") return;
-    if (name === "plannerApiKey") {
+    if (name === "apiKey") {
+      window.localStorage.setItem(GEMINI_KEY_STORAGE, value);
       window.localStorage.setItem(PLANNER_KEY_STORAGE, value);
-    }
-    if (name === "videoApiKey") {
       window.localStorage.setItem(VIDEO_KEY_STORAGE, value);
     }
   };
@@ -122,36 +113,19 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
 
             <form onSubmit={handleSubmit}>
               <label className="field">
-                <span>Planner API key (Gemini 2.5 Pro)</span>
+                <span>Gemini API key</span>
                 <div className="masked">
                   <input
-                    name="plannerApiKey"
+                    name="apiKey"
                     type="password"
                     placeholder="AIza..."
-                    value={form.plannerApiKey}
+                    value={form.apiKey}
                     onChange={handleChange}
                     required
                     autoComplete="off"
                     spellCheck={false}
                   />
-                  <span className="mask-preview">{maskedPlanner}</span>
-                </div>
-              </label>
-
-              <label className="field">
-                <span>Gemini API key (Veo 3.1)</span>
-                <div className="masked">
-                  <input
-                    name="videoApiKey"
-                    type="password"
-                    placeholder="AIza..."
-                    value={form.videoApiKey}
-                    onChange={handleChange}
-                    required
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <span className="mask-preview">{maskedVideo}</span>
+                  <span className="mask-preview">{maskedApiKey}</span>
                 </div>
               </label>
 

@@ -6,6 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const WORLD_ID = import.meta.env.VITE_WORLD_ID || "default";
 const PLANNER_KEY_STORAGE_KEY = "veo_shared_world_planner_api_key";
 const VIDEO_KEY_STORAGE_KEY = "veo_shared_world_video_api_key";
+const GEMINI_KEY_STORAGE_KEY = "veo_shared_world_gemini_api_key";
 const PROGRESS_STORAGE_KEY = `veo_shared_world_progress_${WORLD_ID}`;
 
 const api = axios.create({
@@ -42,8 +43,7 @@ const App = () => {
   const [worldInfo, setWorldInfo] = useState(null);
   const [story, setStory] = useState([]);
   const [activePath, setActivePath] = useState("");
-  const [plannerApiKey, setPlannerApiKey] = useState("");
-  const [videoApiKey, setVideoApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const [globalError, setGlobalError] = useState(null);
@@ -125,13 +125,12 @@ const App = () => {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const legacy = window.localStorage.getItem("sora_shared_world_api_key") || "";
-    const storedPlanner = window.localStorage.getItem(PLANNER_KEY_STORAGE_KEY) || legacy;
-    const storedVideo = window.localStorage.getItem(VIDEO_KEY_STORAGE_KEY) || legacy || storedPlanner;
-    if (storedPlanner) {
-      setPlannerApiKey(storedPlanner);
-    }
-    if (storedVideo) {
-      setVideoApiKey(storedVideo);
+    const storedGemini = window.localStorage.getItem(GEMINI_KEY_STORAGE_KEY) || "";
+    const storedPlanner = window.localStorage.getItem(PLANNER_KEY_STORAGE_KEY) || "";
+    const storedVideo = window.localStorage.getItem(VIDEO_KEY_STORAGE_KEY) || "";
+    const effectiveKey = storedGemini || storedVideo || storedPlanner || legacy;
+    if (effectiveKey) {
+      setGeminiApiKey(effectiveKey);
     }
   }, []);
 
@@ -250,10 +249,9 @@ const App = () => {
   }, [fetchScene]);
 
   const ensureSceneReady = useCallback(
-    async (path, keys) => {
-      const trimmedPlanner = keys?.plannerApiKey?.trim?.() || "";
-      const trimmedVideo = keys?.videoApiKey?.trim?.() || "";
-      if (!trimmedVideo) {
+    async (path, apiKeyValue) => {
+      const trimmedKey = apiKeyValue?.trim?.() || "";
+      if (!trimmedKey) {
         throw new Error("Gemini API key required for video generation.");
       }
       setIsGenerating(true);
@@ -261,8 +259,8 @@ const App = () => {
       try {
         const { data: kickoff } = await api.post(`/worlds/${WORLD_ID}/scenes`, {
           path,
-          plannerApiKey: trimmedPlanner || trimmedVideo,
-          videoApiKey: trimmedVideo,
+          plannerApiKey: trimmedKey,
+          videoApiKey: trimmedKey,
         });
         if (kickoff.status === "ready") {
           updateStoryWithScene(kickoff);
@@ -319,43 +317,39 @@ const App = () => {
         return;
       }
 
-      if (!videoApiKey) {
+      if (!geminiApiKey) {
         setPendingChoice({ index: choiceIndex, path: childPath });
         setShowKeyModal(true);
         return;
       }
 
       try {
-        await ensureSceneReady(childPath, { plannerApiKey, videoApiKey });
+        await ensureSceneReady(childPath, geminiApiKey);
       } catch (error) {
         const message = error.response?.data?.detail || error.message || error.toString();
         setGlobalError(message);
       }
     },
-    [plannerApiKey, videoApiKey, ensureSceneReady, fetchScene, story, updateStoryWithScene, prefetchedScenes, prefetchSceneAssets]
+    [geminiApiKey, ensureSceneReady, fetchScene, story, updateStoryWithScene, prefetchedScenes, prefetchSceneAssets]
   );
 
   const handleApiKeySubmit = useCallback(
-    async ({ planner, video }) => {
-      const trimmedPlanner = (planner || "").trim();
-      const trimmedVideo = (video || "").trim();
-      if (!trimmedVideo) return;
+    async ({ apiKey }) => {
+      const trimmedKey = (apiKey || "").trim();
+      if (!trimmedKey) return;
 
-      setPlannerApiKey(trimmedPlanner);
-      setVideoApiKey(trimmedVideo);
+      setGeminiApiKey(trimmedKey);
 
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(PLANNER_KEY_STORAGE_KEY, trimmedPlanner);
-        window.localStorage.setItem(VIDEO_KEY_STORAGE_KEY, trimmedVideo);
+        window.localStorage.setItem(GEMINI_KEY_STORAGE_KEY, trimmedKey);
+        window.localStorage.setItem(PLANNER_KEY_STORAGE_KEY, trimmedKey);
+        window.localStorage.setItem(VIDEO_KEY_STORAGE_KEY, trimmedKey);
       }
 
       setShowKeyModal(false);
       if (pendingChoice) {
         try {
-          await ensureSceneReady(pendingChoice.path, {
-            plannerApiKey: trimmedPlanner,
-            videoApiKey: trimmedVideo,
-          });
+          await ensureSceneReady(pendingChoice.path, trimmedKey);
         } catch (error) {
           const message = error.response?.data?.detail || error.message || error.toString();
           setGlobalError(message);
@@ -375,9 +369,9 @@ const App = () => {
   const handlePromptForKey = useCallback(
     async (path) => {
       if (typeof path === "string") {
-        if (videoApiKey) {
+        if (geminiApiKey) {
           try {
-            await ensureSceneReady(path, { plannerApiKey, videoApiKey });
+            await ensureSceneReady(path, geminiApiKey);
             return;
           } catch (error) {
             const message = error.response?.data?.detail || error.message || error.toString();
@@ -388,7 +382,7 @@ const App = () => {
       }
       setShowKeyModal(true);
     },
-    [ensureSceneReady, plannerApiKey, videoApiKey]
+    [ensureSceneReady, geminiApiKey]
   );
 
   useEffect(() => {
@@ -454,13 +448,12 @@ const App = () => {
       worldInfo,
       story,
       activePath,
-      plannerApiKey,
-      videoApiKey,
+      geminiApiKey,
       isPolling,
       prefetchedVideos,
       hasSavedProgress,
     }),
-    [worldInfo, story, activePath, plannerApiKey, videoApiKey, isPolling, hasSavedProgress]
+    [worldInfo, story, activePath, geminiApiKey, isPolling, hasSavedProgress]
   );
 
   return (
