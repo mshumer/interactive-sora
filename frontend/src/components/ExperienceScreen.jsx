@@ -136,6 +136,7 @@ const ExperienceScreen = ({
   const simFrameRef = useRef(null);
   const simStartRef = useRef(0);
   const simDurationRef = useRef(45000);
+  const simLatestRef = useRef(0);
 
   const canChoose = Boolean(activeScene && hasChoices && !isGenerating);
 
@@ -217,46 +218,74 @@ const ExperienceScreen = ({
   };
 
   useEffect(() => {
-    const hasNumericProgress = typeof progress === "number";
-    const shouldSimulate = !hasNumericProgress && (isQueued || isGenerating);
+    if (typeof simulatedProgress === "number") {
+      simLatestRef.current = simulatedProgress;
+    } else {
+      simLatestRef.current = 0;
+    }
+  }, [simulatedProgress]);
 
-    if (!shouldSimulate) {
+  useEffect(() => {
+    const actualProgressValue = typeof progress === "number" ? progress : null;
+    const sceneReady = activeScene?.status === "ready";
+    const isComplete = sceneReady || (actualProgressValue !== null && actualProgressValue >= 100);
+    const isGeneratingScene = isQueued || isGenerating;
+
+    const cancelLoop = () => {
       if (simFrameRef.current !== null) {
         cancelAnimationFrame(simFrameRef.current);
         simFrameRef.current = null;
       }
-      setSimulatedProgress(null);
+    };
+
+    if (!isGeneratingScene || isComplete) {
+      cancelLoop();
+      const nextValue = isComplete ? 100 : null;
+      setSimulatedProgress(nextValue);
+      simLatestRef.current = typeof nextValue === "number" ? nextValue : 0;
       return;
     }
 
-    if (simFrameRef.current !== null) {
+    const cappedActual = actualProgressValue !== null && actualProgressValue > 0 ? Math.min(actualProgressValue, 99) : 0;
+    const startProgress = Math.max(Math.min(simLatestRef.current, 99), cappedActual);
+
+    simLatestRef.current = startProgress;
+    setSimulatedProgress(startProgress);
+
+    cancelLoop();
+
+    const remaining = Math.max(99 - startProgress, 0);
+    if (remaining <= 0) {
       return;
     }
 
-    const duration = 40000 + Math.random() * 10000;
-    simDurationRef.current = duration;
     simStartRef.current = performance.now();
-    setSimulatedProgress(0);
+    simDurationRef.current = Math.max((remaining / 99) * 45000, 16);
 
     const step = (timestamp) => {
       const elapsed = timestamp - simStartRef.current;
-      const percent = Math.min(100, (elapsed / simDurationRef.current) * 100);
-      setSimulatedProgress(percent);
-      if (percent >= 100) {
+      const ratio = simDurationRef.current > 0 ? Math.min(1, elapsed / simDurationRef.current) : 1;
+      const computed = startProgress + ratio * (99 - startProgress);
+      const clamped = Math.min(99, computed);
+
+      setSimulatedProgress((prev) => {
+        const safePrev = typeof prev === "number" ? prev : startProgress;
+        const nextValue = Math.max(safePrev, cappedActual, clamped);
+        simLatestRef.current = nextValue;
+        return nextValue;
+      });
+
+      if (clamped >= 99) {
         simFrameRef.current = null;
         return;
       }
+
       simFrameRef.current = requestAnimationFrame(step);
     };
 
     simFrameRef.current = requestAnimationFrame(step);
 
-    return () => {
-      if (simFrameRef.current !== null) {
-        cancelAnimationFrame(simFrameRef.current);
-        simFrameRef.current = null;
-      }
-    };
+    return cancelLoop;
   }, [progress, isQueued, isGenerating, activeScene?.path, activeScene?.status]);
 
   const handleTimeUpdate = () => {
@@ -271,8 +300,19 @@ const ExperienceScreen = ({
     }
   };
 
-  const mergedProgress = typeof progress === "number" ? progress : simulatedProgress;
-  const displayProgress = typeof mergedProgress === "number" ? Math.min(100, mergedProgress) : null;
+  const actualProgress = typeof progress === "number" ? progress : null;
+  const simulatedValue = typeof simulatedProgress === "number" ? simulatedProgress : null;
+  const sceneReady = activeScene?.status === "ready";
+  let mergedProgress = null;
+
+  if (sceneReady || (actualProgress !== null && actualProgress >= 100)) {
+    mergedProgress = 100;
+  } else if (simulatedValue !== null || actualProgress !== null) {
+    const baseline = Math.max(actualProgress ?? 0, simulatedValue ?? 0);
+    mergedProgress = Math.min(99, baseline);
+  }
+
+  const displayProgress = typeof mergedProgress === "number" ? Math.min(100, Math.max(0, mergedProgress)) : null;
 
   const showLoader =
     hasEnteredExperience && (isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading));
