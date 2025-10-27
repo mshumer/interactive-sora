@@ -667,6 +667,9 @@ def _generate_scene_inner(
     cancel_event: threading.Event,
     contributor_hash: str,
 ) -> None:
+    request_fingerprint: Optional[str] = None
+    request_ip: Optional[str] = None
+    scene_depth: Optional[int] = None
     with session_scope() as session:
         scene = (
             session.execute(
@@ -677,6 +680,9 @@ def _generate_scene_inner(
         )
         if scene.status != SceneStatus.QUEUED:
             return
+        request_fingerprint = getattr(scene, "request_fingerprint", None)
+        request_ip = getattr(scene, "request_ip", None)
+        scene_depth = scene.depth
         scene.started_at = scene.started_at or utcnow()
         session.flush()
 
@@ -734,6 +740,9 @@ def _generate_scene_inner(
             .scalars()
             .one()
         )
+        ready_fingerprint = getattr(scene, "request_fingerprint", None) or request_fingerprint
+        ready_ip = getattr(scene, "request_ip", None) or request_ip
+        ready_depth = scene.depth
         scene.scenario_display = planner_result["scenario_display"]
         scene.veo_prompt = planner_result["veo_prompt"]
         scene.choices = planner_result["choices"]
@@ -769,6 +778,18 @@ def _generate_scene_inner(
                 render_time_ms=None,
                 storage_bytes=asset.bytes_written,
             )
+        )
+
+    if ready_fingerprint:
+        track_with_fingerprint(
+            ready_fingerprint,
+            ready_ip,
+            "Scene Generated Successfully",
+            {
+                "world_id": world_id,
+                "path": path or "root",
+                "scene_depth": ready_depth if ready_depth is not None else scene_depth,
+            },
         )
 
 
