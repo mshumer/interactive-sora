@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import ExperienceScreen from "./components/ExperienceScreen.jsx";
+import DisclaimerModal from "./components/DisclaimerModal.jsx";
 import { API_BASE_URL, WORLD_ID } from "./config.js";
 import { initAnalytics } from "./analytics.js";
 
@@ -8,6 +9,7 @@ const PLANNER_KEY_STORAGE_KEY = "veo_shared_world_planner_api_key";
 const VIDEO_KEY_STORAGE_KEY = "veo_shared_world_video_api_key";
 const GEMINI_KEY_STORAGE_KEY = "veo_shared_world_gemini_api_key";
 const PROGRESS_STORAGE_KEY = `veo_shared_world_progress_${WORLD_ID}`;
+const DISCLAIMER_ACK_KEY = "veo_shared_world_disclaimer_ack";
 
 const api = axios.create({
   baseURL: API_BASE_URL || undefined,
@@ -55,9 +57,18 @@ const App = () => {
   const inFlightPrefetch = useRef(new Set());
   const [hasSavedProgress, setHasSavedProgress] = useState(false);
   const isRestoringRef = useRef(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   useEffect(() => {
     initAnalytics();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const acknowledged = window.localStorage.getItem(DISCLAIMER_ACK_KEY);
+    if (!acknowledged) {
+      setShowDisclaimer(true);
+    }
   }, []);
 
   const fetchScene = useCallback(async (path) => {
@@ -370,6 +381,13 @@ const App = () => {
     setShowKeyModal(false);
   }, []);
 
+  const handleDisclaimerAcknowledge = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DISCLAIMER_ACK_KEY, new Date().toISOString());
+    }
+    setShowDisclaimer(false);
+  }, []);
+
   const handlePromptForKey = useCallback(
     async (path) => {
       if (typeof path === "string") {
@@ -461,13 +479,14 @@ const App = () => {
   );
 
   return (
-    <ExperienceScreen
-      context={context}
-      onMakeChoice={handleChoice}
-      isGenerating={isGenerating || isPolling}
-      error={globalError}
-      apiBaseUrl={API_BASE_URL}
-      onRestart={async () => {
+    <>
+      <ExperienceScreen
+        context={context}
+        onMakeChoice={handleChoice}
+        isGenerating={isGenerating || isPolling}
+        error={globalError}
+        apiBaseUrl={API_BASE_URL}
+        onRestart={async () => {
         try {
           prefetchedAssetUrls.current.clear();
           inFlightPrefetch.current.clear();
@@ -489,11 +508,13 @@ const App = () => {
           setGlobalError(message);
         }
       }}
-      onPromptForKey={handlePromptForKey}
-      showKeyModal={showKeyModal}
-      onKeySubmit={handleApiKeySubmit}
-      onKeyCancel={handleKeyCancel}
-    />
+        onPromptForKey={handlePromptForKey}
+        showKeyModal={showKeyModal}
+        onKeySubmit={handleApiKeySubmit}
+        onKeyCancel={handleKeyCancel}
+      />
+      <DisclaimerModal open={showDisclaimer} onAccept={handleDisclaimerAcknowledge} />
+    </>
   );
 };
 
