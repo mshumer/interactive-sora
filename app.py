@@ -80,6 +80,8 @@ APP_TITLE = "Veo Shared World API"
 
 DEFAULT_SECONDS = 8
 MAX_CONTEXT_SECONDS = 141.0
+FALLBACK_PROGRESS_DURATION = 45.0
+
 
 GEMINI_API_BASE = os.environ.get(
     "GEMINI_API_BASE", "https://generativelanguage.googleapis.com/v1beta"
@@ -1019,14 +1021,28 @@ def render_scene_video(
             )
 
             initial_meta = getattr(operation, "metadata", None)
-            if isinstance(initial_meta, dict):
+            fallback_progress_start: Optional[float] = None
+            if used_fallback:
+                fallback_progress_start = time.monotonic()
+                _update_scene_progress(world_id, path, 0)
+            elif isinstance(initial_meta, dict):
                 _update_scene_progress(world_id, path, initial_meta.get("progressPercent"))
+
+            def progress_handler(progress_value: Optional[int]) -> None:
+                if used_fallback:
+                    if fallback_progress_start is None:
+                        return
+                    elapsed = time.monotonic() - fallback_progress_start
+                    manual = min(int((elapsed / FALLBACK_PROGRESS_DURATION) * 99), 99)
+                    _update_scene_progress(world_id, path, manual)
+                    return
+                _update_scene_progress(world_id, path, progress_value)
 
             operation = veo_poll_until_complete(
                 client,
                 operation,
                 cancel_event,
-                progress_callback=lambda prog: _update_scene_progress(world_id, path, prog),
+                progress_callback=progress_handler,
             )
             if cancel_event.is_set():
                 raise SceneCancelled()
@@ -1091,6 +1107,7 @@ def render_scene_video(
                 asset.poster_url,
                 asset.context_video_url,
             )
+            _update_scene_progress(world_id, path, 100)
     finally:
         if parent_context_path and parent_context_path.exists():
             parent_context_path.unlink(missing_ok=True)
