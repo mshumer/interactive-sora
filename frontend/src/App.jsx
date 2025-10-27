@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import ExperienceScreen from "./components/ExperienceScreen.jsx";
+import { API_BASE_URL, WORLD_ID } from "./config.js";
+import { initAnalytics } from "./analytics.js";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
-const WORLD_ID = import.meta.env.VITE_WORLD_ID || "default";
 const PLANNER_KEY_STORAGE_KEY = "veo_shared_world_planner_api_key";
 const VIDEO_KEY_STORAGE_KEY = "veo_shared_world_video_api_key";
 const GEMINI_KEY_STORAGE_KEY = "veo_shared_world_gemini_api_key";
@@ -55,6 +55,10 @@ const App = () => {
   const inFlightPrefetch = useRef(new Set());
   const [hasSavedProgress, setHasSavedProgress] = useState(false);
   const isRestoringRef = useRef(false);
+
+  useEffect(() => {
+    initAnalytics();
+  }, []);
 
   const fetchScene = useCallback(async (path) => {
     const { data } = await api.get(`/worlds/${WORLD_ID}/scenes`, { params: { path } });

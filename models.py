@@ -52,6 +52,8 @@ class Scene(Base):
     context_video_uri = Column(Text, nullable=True)
     planner_model = Column(String(128), nullable=True)
     planner_raw = Column(JSON_TYPE, nullable=True)
+    request_fingerprint = Column(String(128), nullable=True)
+    request_ip = Column(String(64), nullable=True)
     failure_code = Column(String(128), nullable=True)
     failure_detail = Column(Text, nullable=True)
     contributor_hash = Column(String(256), nullable=True)

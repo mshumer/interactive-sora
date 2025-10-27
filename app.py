@@ -42,6 +42,7 @@ from models import (
     split_path,
 )
 from storage import LocalStorageClient, StoredAsset, build_storage_client
+from analytics import fingerprint_from_request, track_with_fingerprint
 from admin import router as admin_router
 
 try:  # pragma: no cover - optional dependency for Veo
@@ -208,6 +209,12 @@ if not STATIC_DIR.exists():
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 app.include_router(admin_router)
+
+
+@app.get("/analytics/identity")
+def analytics_identity(request: Request) -> Dict[str, str]:
+    fingerprint, _ = fingerprint_from_request(request)
+    return {"distinctId": fingerprint}
 
 
 @app.middleware("http")
@@ -412,7 +419,9 @@ def get_scene(world_id: str, path: str = Query("")) -> SceneResponse:
 
 
 @app.post("/worlds/{world_id}/scenes", response_model=SceneResponse)
-def generate_scene_endpoint(world_id: str, payload: SceneGenerationRequest) -> SceneResponse:
+def generate_scene_endpoint(
+    world_id: str, payload: SceneGenerationRequest, request: Request
+) -> SceneResponse:
     if world_id != WORLD_ID:
         raise HTTPException(status_code=404, detail="World not found")
 
@@ -427,8 +436,11 @@ def generate_scene_endpoint(world_id: str, payload: SceneGenerationRequest) -> S
         planner_api_key = video_api_key
 
     should_start = False
+    fingerprint, ip_address = fingerprint_from_request(request)
+    scene_depth = None
     with session_scope() as session:
         scene = ensure_scene_exists(session, world_id, path)
+        scene_depth = scene.depth
         if scene.status == SceneStatus.READY:
             logger.info("scene already ready world=%s path=%s", world_id, path or "root")
             return build_scene_response(session, scene)
@@ -444,19 +456,34 @@ def generate_scene_endpoint(world_id: str, payload: SceneGenerationRequest) -> S
         scene.started_at = utcnow()
         scene.progress = 0
         scene.progress_updated_at = utcnow()
+        scene.request_fingerprint = fingerprint
+        scene.request_ip = None if ip_address == "unknown" else ip_address
         session.flush()
         should_start = True
         response = build_scene_response(session, scene)
 
     if should_start:
+        track_with_fingerprint(
+            fingerprint,
+            ip_address,
+            "Scene Generation Requested",
+            {
+                "world_id": world_id,
+                "path": path or "root",
+                "scene_depth": scene_depth,
+                "queued_at": utcnow().isoformat(),
+            },
+        )
         start_generation(world_id, path, planner_api_key, video_api_key)
     return response
 
 
 @app.post("/worlds/{world_id}/scenes/{path:path}/retry", response_model=SceneResponse)
-def retry_scene(world_id: str, path: str, payload: SceneGenerationRequest) -> SceneResponse:
+def retry_scene(
+    world_id: str, path: str, payload: SceneGenerationRequest, request: Request
+) -> SceneResponse:
     payload.path = path
-    return generate_scene_endpoint(world_id, payload)
+    return generate_scene_endpoint(world_id, payload, request)
 
 
 def ensure_scene_exists(session: Session, world_id: str, path: str) -> Scene:
@@ -729,6 +756,8 @@ def _generate_scene_inner(
         scene.failure_detail = None
         scene.contributor_hash = contributor_hash
         scene.started_at = None
+        scene.request_fingerprint = None
+        scene.request_ip = None
         scene.state_summary = state_summary_text
         scene.progress = 100
         scene.progress_updated_at = utcnow()
@@ -1232,6 +1261,8 @@ def _mark_pending(world_id: str, path: str) -> None:
         scene.contributor_hash = None
         scene.progress = None
         scene.progress_updated_at = None
+        scene.request_fingerprint = None
+        scene.request_ip = None
         logger.info("scene reset to pending world=%s path=%s", world_id, path or "root")
 
 
@@ -1244,6 +1275,19 @@ def _mark_failed(world_id: str, path: str, code: str, detail: str) -> None:
         )
         if not scene:
             return
+        fingerprint = getattr(scene, "request_fingerprint", None)
+        ip_address = getattr(scene, "request_ip", None)
+        track_with_fingerprint(
+            fingerprint,
+            ip_address,
+            "Scene Generation Failed",
+            {
+                "world_id": world_id,
+                "path": path or "root",
+                "failure_code": code,
+                "detail": detail,
+            },
+        )
         scene.status = SceneStatus.FAILED
         scene.failure_code = code
         scene.failure_detail = detail
@@ -1251,6 +1295,8 @@ def _mark_failed(world_id: str, path: str, code: str, detail: str) -> None:
         scene.contributor_hash = None
         scene.progress = None
         scene.progress_updated_at = None
+        scene.request_fingerprint = None
+        scene.request_ip = None
         logger.warning("scene failed world=%s path=%s code=%s detail=%s", world_id, path or "root", code, detail)
 
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Timeline from "./Timeline.jsx";
+import { trackEvent } from "../analytics.js";
 import "../styles/experience.css";
 
 const ExperienceScreen = ({
@@ -24,6 +25,8 @@ const ExperienceScreen = ({
   const [showPoster, setShowPoster] = useState(true);
   const videoRef = useRef(null);
   const lastSceneIdRef = useRef(null);
+  const progressMilestonesRef = useRef(new Set());
+  const playbackTrackedRef = useRef(false);
 
   useEffect(() => {
     if (!story.length) return;
@@ -34,6 +37,19 @@ const ExperienceScreen = ({
   }, [story]);
 
   const activeScene = story[activeIndex] || null;
+
+  useEffect(() => {
+    progressMilestonesRef.current = new Set();
+    playbackTrackedRef.current = false;
+    if (!activeScene) return;
+    trackEvent("Scene Viewed", {
+      path: activeScene.path || "root",
+      scene_index: activeIndex,
+      scene_depth: activeScene.depth ?? 0,
+      status: activeScene.status,
+      has_video: Boolean(activeScene.videoUrl),
+    });
+  }, [activeScene?.path, activeIndex, activeScene?.status, activeScene?.videoUrl]);
 
   useEffect(() => {
     if (!activeScene) return;
@@ -148,12 +164,29 @@ const ExperienceScreen = ({
   const handleVideoEnd = () => {
     setHasVideoEnded(true);
     setChoicesRevealActive(true);
+    if (activeScene) {
+      progressMilestonesRef.current.add(1);
+      trackEvent("Scene Playback Completed", {
+        path: activeScene.path || "root",
+        scene_index: activeIndex,
+        scene_depth: activeScene.depth ?? 0,
+      });
+    }
   };
 
   const handleVideoPlay = () => {
     setHasVideoEnded(false);
     setIsVideoLoading(false);
     setShowPoster(false);
+    if (!playbackTrackedRef.current && activeScene) {
+      playbackTrackedRef.current = true;
+      trackEvent("Scene Playback Started", {
+        path: activeScene.path || "root",
+        scene_index: activeIndex,
+        scene_depth: activeScene.depth ?? 0,
+        video_seconds: activeScene.videoSeconds ?? null,
+      });
+    }
   };
 
   const handleReplay = () => {
@@ -161,6 +194,8 @@ const ExperienceScreen = ({
     setHasVideoEnded(false);
     setChoicesRevealActive(false);
     setShowPoster(Boolean(activeScene?.posterUrl));
+    progressMilestonesRef.current = new Set();
+    playbackTrackedRef.current = false;
     videoRef.current.pause();
     videoRef.current.currentTime = 0;
     videoRef.current.play().catch((error) => {
@@ -295,6 +330,19 @@ const ExperienceScreen = ({
     const duration = Number.isFinite(videoElement.duration) ? videoElement.duration : null;
     if (!duration || duration <= 0) return;
     const remaining = duration - videoElement.currentTime;
+    const progressRatio = duration > 0 ? videoElement.currentTime / duration : 0;
+    const milestones = progressMilestonesRef.current;
+    [0.25, 0.5, 0.75].forEach((threshold) => {
+      if (progressRatio >= threshold && !milestones.has(threshold) && activeScene) {
+        milestones.add(threshold);
+        trackEvent("Scene Progress Milestone", {
+          path: activeScene.path || "root",
+          scene_index: activeIndex,
+          scene_depth: activeScene.depth ?? 0,
+          progress_percent: Math.round(threshold * 100),
+        });
+      }
+    });
     if (remaining <= 1) {
       setChoicesRevealActive(true);
     }
