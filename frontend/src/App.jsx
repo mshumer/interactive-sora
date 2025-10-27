@@ -9,7 +9,7 @@ const PLANNER_KEY_STORAGE_KEY = "veo_shared_world_planner_api_key";
 const VIDEO_KEY_STORAGE_KEY = "veo_shared_world_video_api_key";
 const GEMINI_KEY_STORAGE_KEY = "veo_shared_world_gemini_api_key";
 const PROGRESS_STORAGE_KEY = `veo_shared_world_progress_${WORLD_ID}`;
-const DISCLAIMER_ACK_KEY = "veo_shared_world_disclaimer_ack";
+const DISCLAIMER_ACK_KEY = "veo_shared_world_disclaimer_ack_v2";
 
 const api = axios.create({
   baseURL: API_BASE_URL || undefined,
