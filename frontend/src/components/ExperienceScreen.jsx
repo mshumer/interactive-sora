@@ -538,7 +538,10 @@ const ApiKeysModal = ({ initialKey, onSubmit, onCancel }) => {
     <div className="key-modal-backdrop">
       <div className="key-modal">
         <h3>Provide your Gemini API key</h3>
-        <p>Your key stays in your browser and powers both Veo renders and Gemini 2.5 Pro planning.</p>
+        <p>
+          Paste your Gemini API key below. Need one? Visit <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer">Google AI Studio</a>
+          to create it. The key stays in your browser and powers both Veo renders and Gemini 2.5 Pro planning.
+        </p>
         <form onSubmit={handleSubmit}>
           <label>
             <span>Gemini API key</span>
