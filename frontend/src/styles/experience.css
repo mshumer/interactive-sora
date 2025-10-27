@@ -493,6 +493,18 @@
   line-height: 1.5;
 }
 
+.key-modal a.key-modal-link {
+  color: rgba(191, 219, 254, 0.95);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  transition: color 0.2s ease;
+}
+
+.key-modal a.key-modal-link:hover {
+  color: rgba(96, 165, 250, 0.95);
+}
+
 .key-input-row {
   display: flex;
   gap: 0.6rem;
