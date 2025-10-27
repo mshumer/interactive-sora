@@ -603,6 +603,13 @@ def _generate_scene(
     cancel_event: threading.Event,
 ) -> None:
     contributor_hash = hash_contributor(video_api_key, path)
+    logger.debug(
+        "[contributor] world=%s path=%s key_len=%s hash=%s",
+        world_id,
+        path or "root",
+        len((video_api_key or "").strip()),
+        contributor_hash,
+    )
     try:
         logger.info("generation started world=%s path=%s", world_id, path or "root")
         try:
@@ -1163,9 +1170,9 @@ def hash_contributor(api_key: str, path: str) -> str:
     import hashlib
 
     normalized_key = (api_key or "").strip()
-    normalized_salt = CONTRIBUTOR_SALT or "veo-shared-world"
-    payload = f"{normalized_salt}:{normalized_key}".encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
+    if not normalized_key:
+        normalized_key = "_anonymous_contributor"
+    return hashlib.sha256(normalized_key.encode("utf-8")).hexdigest()
 
 
 def _mark_pending(world_id: str, path: str) -> None:
