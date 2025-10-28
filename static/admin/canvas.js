@@ -703,28 +703,74 @@ function pruneSubtree(path) {
 }
 
 function updateListView() {
-  listTableBody.innerHTML = "";
+  listTableBody.textContent = "";
   if (!state.nodes.size) {
     const row = document.createElement("tr");
-    row.innerHTML = '<td colspan="5" style="padding:24px 16px; text-align:center; color: var(--muted);">No data loaded.</td>';
+    const cell = document.createElement("td");
+    cell.colSpan = 5;
+    cell.style.padding = "24px 16px";
+    cell.style.textAlign = "center";
+    cell.style.color = "var(--muted)";
+    cell.textContent = "No data loaded.";
+    row.appendChild(cell);
     listTableBody.appendChild(row);
     return;
   }
   const nodes = Array.from(state.nodes.values()).sort((a, b) => a.path.localeCompare(b.path, undefined, { numeric: true }));
+
   nodes.forEach((node) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${node.path || "<root>"}</td>
-      <td><span class="status-pill" data-status="${node.status || "unknown"}">${node.status || "unknown"}</span></td>
-      <td>${node.updatedAt ? new Date(node.updatedAt).toLocaleString() : "—"}</td>
-      <td>${node.scenario ? node.scenario.slice(0, 120) + (node.scenario.length > 120 ? "…" : "") : "+"}</td>
-      <td style="display:flex; gap:6px; flex-wrap:wrap;">
-        <button type="button" class="chip" data-action="select">Select</button>
-        <button type="button" class="chip" data-action="center">Center</button>
-        <button type="button" class="chip" data-action="preview" ${node.videoUrl ? "" : "disabled"}>Preview</button>
-        <button type="button" class="danger" data-action="reset">Reset</button>
-      </td>
-    `;
+
+    const pathCell = document.createElement("td");
+    pathCell.textContent = node.path || "<root>";
+    tr.appendChild(pathCell);
+
+    const statusCell = document.createElement("td");
+    const statusPill = document.createElement("span");
+    statusPill.className = "status-pill";
+    statusPill.dataset.status = node.status || "unknown";
+    statusPill.textContent = node.status || "unknown";
+    statusCell.appendChild(statusPill);
+    tr.appendChild(statusCell);
+
+    const updatedCell = document.createElement("td");
+    updatedCell.textContent = node.updatedAt ? new Date(node.updatedAt).toLocaleString() : "—";
+    tr.appendChild(updatedCell);
+
+    const scenarioCell = document.createElement("td");
+    if (node.scenario) {
+      const needsEllipsis = node.scenario.length > 120;
+      const trimmed = needsEllipsis ? `${node.scenario.slice(0, 120)}...` : node.scenario;
+      scenarioCell.textContent = trimmed;
+    } else {
+      scenarioCell.textContent = "+";
+    }
+    tr.appendChild(scenarioCell);
+
+    const actionsCell = document.createElement("td");
+    actionsCell.style.display = "flex";
+    actionsCell.style.gap = "6px";
+    actionsCell.style.flexWrap = "wrap";
+
+    const addActionButton = (label, action, className, disabled = false) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.className = className;
+      button.dataset.action = action;
+      if (disabled) {
+        button.disabled = true;
+      }
+      actionsCell.appendChild(button);
+    };
+
+    addActionButton("Select", "select", "chip");
+    addActionButton("Center", "center", "chip");
+    addActionButton("Preview", "preview", "chip", !node.videoUrl);
+    addActionButton("Reset", "reset", "danger");
+
+    tr.appendChild(actionsCell);
+
     tr.dataset.path = node.path;
     listTableBody.appendChild(tr);
   });
@@ -849,9 +895,26 @@ function openModalForSelected() {
   previewTitle.textContent = node.path || "Root";
   const externalVideo = node.externalVideoUrl || node.videoUrl;
   const externalContext = node.externalContextVideoUrl || node.contextVideoUrl;
-  previewLinks.innerHTML = externalVideo
-    ? `<a href="${externalVideo}" target="_blank" rel="noopener" style="color: var(--accent);">Open video in new tab</a>${externalContext ? ' · <a href="' + externalContext + '" target="_blank" rel="noopener" style="color: var(--accent);">Full continuity</a>' : ''}`
-    : "";
+  previewLinks.textContent = "";
+  const appendLink = (href, label) => {
+    if (typeof href !== "string" || (!/^https?:/i.test(href) && !href.startsWith("/"))) {
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = label;
+    link.style.color = "var(--accent)";
+    previewLinks.appendChild(link);
+  };
+  if (externalVideo) {
+    appendLink(externalVideo, "Open video in new tab");
+    if (externalContext) {
+      previewLinks.appendChild(document.createTextNode(" · "));
+      appendLink(externalContext, "Full continuity");
+    }
+  }
   previewOverlay.classList.add("active");
   previewVideo.load();
   const playPromise = previewVideo.play();
