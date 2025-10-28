@@ -463,7 +463,7 @@ const ExperienceScreen = ({
           <div className="start-screen">
             <div className="start-screen__backdrop" />
             <div className="start-screen__content">
-              <span className="start-screen__eyebrow">Shared World Prelude</span>
+              <span className="start-screen__eyebrow">Infinite Adventure</span>
               <h1 className="start-screen__headline">{worldTitle}</h1>
               <p className="start-screen__body">{worldDescription}</p>
               {hasSavedProgress && activeScene && (
@@ -554,7 +554,7 @@ const ChoiceStatusBadge = ({ status }) => {
     return <span className="choice-status queued">Generating</span>;
   }
   if (status === "failed") {
-    return <span className="choice-status failed">Needs retry</span>;
+    return null;
   }
   return null;
 };

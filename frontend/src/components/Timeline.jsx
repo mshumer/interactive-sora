@@ -22,6 +22,7 @@ const Timeline = ({ story, activeIndex, onSelect, apiBaseUrl, isOpen = false, on
             : null;
           const isActive = index === activeIndex;
           const status = scene.status || "pending";
+          const statusText = statusLabel(status);
           const chosen = scene.triggerChoice || null;
 
           return (
@@ -40,7 +41,7 @@ const Timeline = ({ story, activeIndex, onSelect, apiBaseUrl, isOpen = false, on
               <div className="timeline-info">
                 <header>
                   <span className="timeline-number">Scene {index + 1}</span>
-                  <span className={`timeline-status ${status}`}>{statusLabel(status)}</span>
+                  {statusText && <span className={`timeline-status ${status}`}>{statusText}</span>}
                 </header>
                 <p className="timeline-description">{scene.scenarioDisplay || "Awaiting generation."}</p>
                 {chosen && <p className="timeline-choice">Branch via: {chosen}</p>}
@@ -60,7 +61,7 @@ const statusLabel = (status) => {
     case "queued":
       return "Rendering";
     case "failed":
-      return "Needs retry";
+      return null;
     default:
       return "Unexplored";
   }
