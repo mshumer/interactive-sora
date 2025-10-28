@@ -366,7 +366,7 @@ const ExperienceScreen = ({
     hasEnteredExperience && (isGenerating || isQueued || (Boolean(videoSrc) && isVideoLoading));
   const allowReplay = Boolean(videoSrc && hasVideoEnded);
   const shouldShowChoiceDrawer = hasEnteredExperience && choicesRevealActive;
-  const worldTitle = worldInfo?.title || worldInfo?.name || "Choose Your Odyssey";
+  const worldTitle = worldInfo?.title || worldInfo?.name || "Infinite Adventure";
   const worldDescription =
     worldInfo?.tagline ||
     worldInfo?.description ||
@@ -463,7 +463,7 @@ const ExperienceScreen = ({
           <div className="start-screen">
             <div className="start-screen__backdrop" />
             <div className="start-screen__content">
-              <span className="start-screen__eyebrow">Infinite Adventure</span>
+              {/* <span className="start-screen__eyebrow">Infinite Adventure</span> */}
               <h1 className="start-screen__headline">{worldTitle}</h1>
               <p className="start-screen__body">{worldDescription}</p>
               {hasSavedProgress && activeScene && (
