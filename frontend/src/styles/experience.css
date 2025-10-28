@@ -181,6 +181,7 @@
   margin: 0;
   background: linear-gradient(135deg, rgba(96, 165, 250, 0.95), rgba(236, 72, 153, 0.92));
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -655,6 +656,14 @@
 
   .drawer-inner {
     padding: 1.4rem 1.2rem;
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px) + 2rem);
+    max-height: calc(100vh - 12rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .choice-drawer {
+    bottom: max(4rem, env(safe-area-inset-bottom, 0px) + 3rem);
   }
 
   .hud-column.primary h1 {
