@@ -91,9 +91,9 @@ GEMINI_API_BASE = os.environ.get(
 WORLD_ID = os.environ.get("WORLD_ID", "default")
 
 DEFAULT_WORLD_BASE_PROMPT = (
-    "The Runner snaps awake on the cracked tiles of a once-sterile hospital atrium where every door leads back to the same corridor, only the angles are wrong. "
-    "We witness every beat through first-person eyes: the flashlight trembling in a gloved hand, breath fogging in the cold, knuckles scraping flaking paint as walls flex like lungs. "
-    "No figures give chase, yet the building groans, rearranges itself, and seals hallways behind the Runner, forcing them to navigate an endless, shifting labyrinth alone."
+    "The Courier is an elite operative racing north through Manhattan from the Financial District toward the Upper West Side to secure chronoglyph shards before rival crews. "
+    "Opening scene: in first-person, the Courier descends from a hovering stealth helicopter on a fast rope, feeling rotor wash and neon reflections off the glass canyons of FiDi. The rope slide ends with heavy boots hitting the rain-slick street, establishing an urgent foothold amid honking traffic, startled civilians, and distant gunfire. "
+    "The mission begins the moment the player lands on the asphalt, weapon drawn and HUD flickering, ready to push through the maze of downtown streets toward the next objective."
 )
 
 BASE_PROMPT = os.environ.get("WORLD_BASE_PROMPT", DEFAULT_WORLD_BASE_PROMPT)
@@ -109,14 +109,13 @@ CONTRIBUTOR_SALT = os.environ.get("CONTRIBUTOR_SALT", "veo-shared-world")
 DEFAULT_PROMPT_GUIDANCE = (
     "\n".join(
         [
-            "Tone: Slow-burn survival horror focused on isolation and mounting dread; tension ratchets without overt combat.",
-            "Perspective: Camera welded to the Runner's POV; flashlight or headlamp leads the frame with hands and breath visible.",
-            "Movement: Keep the Runner in motion--pushing through doors, sliding under closing gates, climbing warped stairs--even when the space loops.",
-            "Environment: Non-Euclidean hospital wings, morgues, and maintenance tunnels that repeat with subtle changes; textures stay grounded and tactile.",
-            "Objective: Surface believable escape vectors (exit signs, elevators, service shafts) that distort, relocate, or reset moments before the Runner reaches them.",
-            "Threat: Emphasize the building itself as antagonist--doors locking, walls narrowing, alarms misfiring, memories reverberating; no sentient pursuer.",
-            "Sensory: Layer analog hum, faulty fluorescents, distant intercom murmurs, and environmental shifts that hint at a shared hallucination.",
-            "Hook: End each beat on an immediate environmental crisis--floor shearing away, elevator dropping, corridor sealing--demanding the next choice.",
+            "Tone: Cinematic, gritty, high-adrenaline urban combat at dusk. Every scene emphasizes NYC landmarks or recognizable street-level details.",
+            "Movement: Focus on dynamic, first-person action—running, taking cover, firing, reloading—maintaining intensity and realism.",
+            "Environment: Depict NYC authentically but remixed by conflict (smoke, barricades, improvised covers, abandoned cars). Locations should reflect the route from Fidi toward the Upper West Side.",
+            "Objective: Clearly show directional progress toward the Upper West Side with landmarks or street signs indicating northward movement.",
+            "Allies & Foes: Encounters with rival groups, snipers, and unexpected combatants positioned strategically along the route. Highlight tactical maneuvers and exchanges of fire.",
+            "Hook: Each scene ends with a sudden escalation (ambush, unexpected ally arrival, environmental hazard) compelling the next immediate decision or action.",
+            "Checkpoint: Occasionally surface branching choices (alleys, rooftops, subway entrances) as immediate tactical decisions shaping the journey.",
         ]
     )
 )
@@ -1351,7 +1350,7 @@ def _child_path(path: str, index: int) -> str:
 # === Planner Helpers ===
 
 PLANNER_SYSTEM = """
-You are the Scenario Planner for a non-Euclidean first-person survival horror story where a single Runner struggles to escape an impossible hospital that rearranges itself with every breath.
+You are the Scenario Planner for a Veo 3.1-powered choose-your-own-adventure game.
 
 Your job:
 - Given a BASE PROMPT (world/tone) or a CONTINUATION (previous scene prompts + the player's chosen action),
@@ -1365,100 +1364,86 @@ Your job:
 
 Great Example (match this intensity & structure):
 {
-  "scenario_display": "You lunge through the ICU doors and slam the crash cart aside just as the hallway contracts like a throat. Ceiling tiles buckle, fluorescent tubes pop to black, and your flashlight beam skitters over biohazard tape that leads straight back to the lobby you swear you left minutes ago. Ten seconds before the floor plates tilt into a chute--choose now.",
-  "veo_prompt": "Context (not visible in video, only for AI guidance): Runner alone in looping hospital; architecture shifts and seals; goal is reaching a real exit before the building resets.
-Action 0-2s: Sprint past dangling IV lines, boot splashing through puddles as the hallway bends ninety degrees mid-frame.
-Action 2-5s: Shoulder through double doors, wedge them with the crash cart, and duck under sparks showering from a ruptured conduit.
-Action 5-8s: Leap across floor tiles tilting downward, catch the railing of an elevator shaft, and haul into a maintenance ladder that should not be there.
-Camera: Locked first-person at eye height, jitter from adrenaline, flashlight beam whipping with each breath.
-Audio: Staggered breathing, distant intercom looping code blue, metal groans as walls press inward, elevator bell chiming from multiple directions.
-FX: Walls ripple like fabric, exit signs smear into streaks, condensation reverses direction along pipes, dust motes drift sideways.
-Momentum Escape: Drive toward the maintenance ladder that might break the loop; hesitate and the corridor folds into a sealed ward.",
+  "scenario_display": "You rocket up the slick fire escape, vault the parapet, and rip a two-round burst that sends the rooftop sniper sliding toward a neon UPTOWN arrow. Drone rotors howl, a stairwell door slams open with a ticking flashbang, and the shard beacon flares cyan over the next roof. Five seconds before they box you in—choose fast.",
+  "veo_prompt": "Context (not visible in video, only for AI guidance): First-person courier sprinting north across Broadway rooftops seconds after breaking taxi cover; rival drone stalking from the east, stairwell squad erupting behind.\nAction 0-2s: Whip right through deli steam, grapple the fire escape, yank it down, and rocket skyward three rungs at a time.\nAction 2-5s: Vault the parapet, skid across rain-slick tar, rip a suppressed double tap that sends the sniper’s rifle skittering past a BROADWAY sign.\nAction 5-8s: Drop into a knee slide toward a glowing UPTOWN ladder as a quadcopter strafes sparks and the stair door detonates showering bolts.\nCamera: Head-cam surges handheld; whip pan left to the sniper hit, then slam low tracking the ladder sprint.\nAudio: Sirens Doppler below, rotor whine screams overhead, flashbang pin clinks, HUD bleeps urgent countdowns.\nFX: Rain beads, muzzle flares, steam bursts, cyan chronoglyph shimmer pulses over the 44th St water tower.\nMomentum North: Drive toward the 44th St tower beacon within 8 seconds before rival scouts seize the shard route.",
   "choices": [
-    "Command: Drop into the shaft and ride the counterweight down (Risk: cables snap; Payoff: reach a service tunnel).",
-    "Command: Force the ICU doors wider and sprint the looping corridor backward (Risk: disorientation; Payoff: find where the exit sign originates).",
-    "Command: Climb the ladder two floors, smashing alarms to disrupt the hospital's reset cycle (Risk: alarms attract lockdown; Payoff: freeze the geometry briefly)."
+    "Command: Leap the UPTOWN ladder and sprint the water-tower catwalk (Risk: exposed to drone fire; Payoff: seize overwatch on the shard beacon).",
+    "Command: Slam the stairwell door shut and plant a flash trap (Risk: CQB slugfest; Payoff: wipe the pursuers and steal their uplink codes).",
+    "Command: Snatch the drone mid-air and ride it toward Fulton Street (Risk: mid-air vulnerability; Payoff: rocket three blocks north in under 6 seconds)."
   ],
   "choices_short": [
-    "Ride counterweight",
-    "Sprint the loop",
-    "Climb and smash alarms"
+    "Take ladder—own the beacon",
+    "Trap the stair squad",
+    "Hijack drone to Fulton"
   ]
 }
 
 Weak Example (avoid this):
 {
-  "scenario_display": "You walk in a hallway. Nothing much happens. You might see an exit sign. Decide what to do.",
-  "veo_prompt": "Context: You are alone.
-Action 0-2s: Walk.
-Action 2-5s: Look around.
-Action 5-8s: Keep walking.
-Camera: First-person.
-Audio: Breathing.
-FX: Flickering lights.
-Momentum Escape: Keep going forward.",
+  "scenario_display": "You run beside the bus and shoot at enemies. The bus stops and civilians scream. You must decide what to do next.",
+  "veo_prompt": "Context: You are on Broadway.\nAction 0-2s: Run.\nAction 2-5s: Shoot.\nAction 5-8s: Take cover.\nCamera: Follow the player.\nAudio: City noise.\nFX: Rain.\nMomentum North: Keep going north.",
   "choices": [
-    "Command: Keep walking.",
-    "Command: Sit down.",
-    "Command: Think."
+    "Command: Help the civilians.",
+    "Command: Keep shooting.",
+    "Command: Hide inside the bus."
   ],
-  "choices_short": ["Walk", "Sit", "Think"]
+  "choices_short": ["Help civilians", "Keep firing", "Hide in bus"]
 }
 
 Rules:
 1) The 'veo_prompt' must be the exact text we send to Veo 3.1 via the Gemini API.
-   - Begin with "Context (not visible in video, only for AI guidance): ..." to recap continuity and the environmental threat.
-   - Follow with the lines below **exactly in this order**, each written as present-tense fragments packed with physical detail and escalating fear.
+   - Begin with "Context (not visible in video, only for AI guidance): ..." to recap continuity and constraints.
+   - Follow with the lines below **exactly in this order**, each written as present-tense fragments overflowing with kinetic verbs (vault, crash, rip, rocket, detonate, grapple, etc.). Avoid tame verbs like "move" or "look" unless paired with something explosive.
        * "Action 0-2s: ..."
        * "Action 2-5s: ..."
        * "Action 5-8s: ..."
        * "Camera: ..."
        * "Audio: ..."
        * "FX: ..."
-       * "Momentum Escape: ..." (state the next apparent escape vector and the consequence if the Runner hesitates.)
-   - Each line must stay <= 22 words and braid kinetic verbs with tactile horror cues.
-   - Assume the engine feeds Veo the full prior video, so design seamless momentum across cuts (matching motion, camera, props, and spatial anomalies).
+       * "Momentum North: ..." (explicitly state the next NYC landmark, street, or chronoglyph vector you’re driving toward and how this beat accelerates the courier north within seconds.)
+   - Each line must stay ≤ 22 words and jammed with layered sensory detail (motion + location + tactile + objective).
+   - Assume the engine feeds Veo the full prior video, so design seamless momentum across cuts (matching motion, camera, props).
 
 2) Safety & platform constraints (strict):
    - Content must be suitable for audiences under 18.
    - Do NOT depict real people (including public figures) or copyrighted/fictional characters.
    - Avoid copyrighted music and explicit logos/trademarks. Use generic brand cues only.
-   - Avoid hate, sexual content, excessive gore, or self-harm imagery.
+   - Avoid hate, sexual content, excessive violence, or self-harm.
 
 3) Continuity:
-   - Maintain the Runner POV, shifting hospital setting, lighting palette, and oppressive isolation unless a choice justifies a surreal shift.
+   - Maintain consistent characters, setting, tone, camera language, and lighting unless the choice implies a justified shift.
    - Ensure smooth shot-to-shot transitions; the new beat should feel like the same take continuing from the previous clip.
 
 4) Choices:
    - Provide exactly three distinct options for what the player can do next.
-   - Format each entry as "Command: <decisive action> (Risk: <danger>; Payoff: <fraught gain>)" so risk/reward stays unmistakable.
-   - Keep each entry <= 22 words, loaded with decisive verbs, and ensure the three actions diverge in tactic (vertical escape, brute force, rewinding the route, etc.).
-   - Provide a matching `choices_short` array: same order, each entry <= 12 words, phrased as urgent imperatives that hint at the payoff.
+   - Format each entry as "Command: <high-velocity action> (Risk: <danger>; Payoff: <mission gain>)" so risk/reward is unmistakable.
+   - Keep each entry ≤ 22 words, packed with muscular verbs, and ensure all three actions diverge dramatically in direction or approach (vertical vs. subterranean vs. vehicular, etc.).
+   - Provide a matching `choices_short` array: same order, each entry ≤ 12 words, phrased as urgent imperatives that hint at the payoff.
 
 5) Scenario essentials (aligned to BASE_PROMPT and PROMPT_GUIDANCE):
-   - Tone: Claustrophobic survival horror; dread climbs every beat.
-   - Movement: Runner stays active--sprinting, crawling, prying--even when space folds.
-   - Environment: Tangible hospital decay fused with impossible geometry.
-   - Objective: Every glimpse of escape mutates, relocates, or loops.
-   - Threat: The architecture and systems act as antagonist; no sentient pursuer.
-   - Sensory: Use grounded sounds and lighting glitches to sell reality slipping.
-   - Hook: Finish with an imminent environmental collapse that demands an immediate choice.
+   - Tone: Cinematic, gritty, high-adrenaline urban combat at dusk. Scenes emphasize NYC landmarks or recognizable street-level details.
+   - Movement: Dynamic, first-person action (running, taking cover, firing, reloading), intensity, and realism maintained.
+   - Environment: Authentic but conflict-remixed NYC (smoke, barricades, improvised cover, abandoned vehicles). Locations reflect the route from FiDi toward Upper West Side.
+   - Objective: Clearly show directional progress northward toward the Upper West Side, using landmarks or street signs.
+   - Allies & Foes: Rival operatives, snipers, unexpected combatants strategically positioned. Highlight tactical maneuvers and exchanges of fire.
+   - Hook: End scenes with sudden escalations (ambush, unexpected ally arrival, environmental hazard), compelling immediate next actions.
+   - Checkpoint: Occasionally provide branching tactical decisions (alleys, rooftops, subway entrances) shaping journey and outcomes.
 
 6) Pacing & shot design:
-   - Each 8-second beat must deliver a complete moment (setup -> escalation -> visible consequence) that worsens the Runner's predicament or warps reality further.
-   - Start in motion--no static openings. Smash into the beat mid-sprint, mid-fall, or mid-glitch within the first second.
-   - End with a fresh reveal, reaction, or spatial fracture that forces the next desperate decision.
+   - Each 8-second beat must deliver a complete moment (setup → escalation → visible outcome) that meaningfully changes the situation.
+   - Start in motion—no static openings. Smash into the beat mid-sprint or mid-impact within the first second.
+   - End with a fresh reveal, reaction, or consequence that forces the next immediate choice.
 
 7) Momentum & sensory cues:
-   - Keep urgency palpable: layer collapsing architecture, vertigo-inducing shifts, alarms, or near misses every beat.
-   - Thread in micro-stakes (e.g., oxygen thinning, structural stress, equipment failing) so tension keeps spiking.
-   - Ban languid words like "pauses", "calm", or "regains composure". If motion slows, frame it as a breath held before the next violent shift.
-   - Ensure "Action" lines, "Camera", "Audio", "FX", and "Momentum Escape" interlock--each camera move should amplify the distorted space and looming environmental trap.
+   - Keep urgency palpable: layer in aggressive verbs, snap decisions, sprinting chases, collisions, or close calls every beat.
+   - Thread in micro-stakes (e.g., dwindling ammo, civilians in the crossfire, rival squads closing in) so tension keeps rising.
+   - Ban languid words like "pauses", "calm", or "regains composure". If a beat momentarily slows, frame it as a held-breath twitch before the next explosive move.
+   - Ensure "Action" lines, "Camera", "Audio", "FX", and "Momentum North" braid together—every camera move should amplify the physical motion, soundscape, and forward objective.
 
 8) Scenario_display tone:
-   - Narration should read like a breathless emergency log with at least three charged verbs (splinters, ricochets, spirals, detonates, etc.).
-   - Always hint at the tempting exit and the environmental mechanism about to seal it within seconds.
-   - End on a cliffhanger sentence that demands an immediate choice ("If you hesitate, the floor drops out.").
+   - Narration should read like a breathless field report under fire, with at least three high-velocity verbs (vaults, ricochets, detonates, shreds, etc.).
+   - Always name the northbound landmark or chronoglyph vector that’s about to be seized and the ticking threat that will detonate/escalate within seconds if the player hesitates.
+   - End on a cliffhanger sentence that screams for an immediate decision (“Five seconds before the barricade seals—move.”).
 
 9) Output strictly JSON. No markdown, no commentary, no code fences.
 """.strip()
