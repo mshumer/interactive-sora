@@ -37,7 +37,7 @@ FRAME_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_VIDEO_SIZE = "1280x720"
 DEFAULT_SECONDS = 8
-ALLOWED_SECONDS = [4, 8, 12]
+ALLOWED_SECONDS = [4, 8, 12, 24]
 
 OPENAI_API_BASE = "https://api.openai.com/v1"
 SORA_VIDEOS_ENDPOINT = f"{OPENAI_API_BASE}/videos"
@@ -86,6 +86,7 @@ class CreateSessionRequest(BaseModel):
     planner_model: str = Field(..., alias="plannerModel")
     sora_model: str = Field(..., alias="soraModel")
     video_size: str = Field(DEFAULT_VIDEO_SIZE, alias="videoSize")
+    video_seconds: int = Field(DEFAULT_SECONDS, alias="videoSeconds")
     base_prompt: str = Field(..., alias="basePrompt")
     max_steps: int = Field(10, alias="maxSteps")
 
@@ -93,6 +94,12 @@ class CreateSessionRequest(BaseModel):
     def validate_max_steps(cls, value: int) -> int:
         if not 1 <= value <= 30:
             raise ValueError("maxSteps must be between 1 and 30")
+        return value
+
+    @validator("video_seconds")
+    def validate_video_seconds(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("videoSeconds must be positive")
         return value
 
 
@@ -133,6 +140,7 @@ class SessionConfig:
     planner_model: str
     sora_model: str
     video_size: str
+    video_seconds: int
     base_prompt: str
     max_steps: int
 
@@ -476,6 +484,7 @@ def sora_poll_until_complete(api_key: str, job: dict) -> dict:
 
 
 def extract_last_frame(video_path: Path, out_image_path: Path) -> Path:
+    out_image_path.parent.mkdir(parents=True, exist_ok=True)
     if cv2 is not None:
         cap = cv2.VideoCapture(str(video_path))
         if cap.isOpened():
@@ -626,6 +635,7 @@ def create_session(payload: CreateSessionRequest) -> SessionResponse:
         planner_model=payload.planner_model.strip() or "gpt-5",
         sora_model=payload.sora_model.strip() or "sora-2",
         video_size=payload.video_size.strip() or DEFAULT_VIDEO_SIZE,
+        video_seconds=normalize_seconds(payload.video_seconds),
         base_prompt=payload.base_prompt.strip(),
         max_steps=payload.max_steps,
     )
@@ -653,7 +663,7 @@ def create_session(payload: CreateSessionRequest) -> SessionResponse:
                 sora_prompt=story_item["sora_prompt"],
                 model=config.sora_model,
                 size=config.video_size,
-                seconds=DEFAULT_SECONDS,
+                seconds=config.video_seconds,
                 input_reference=None,
             )
             story_item["video_id"] = video_id
@@ -730,7 +740,7 @@ def advance_story(session_id: str, payload: ChoiceRequest) -> SessionResponse:
                     sora_prompt=next_item["sora_prompt"],
                     model=state.config.sora_model,
                     size=state.config.video_size,
-                    seconds=DEFAULT_SECONDS,
+                    seconds=state.config.video_seconds,
                     input_reference=input_reference,
                 )
                 next_item["video_id"] = video_id

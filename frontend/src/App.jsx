@@ -31,6 +31,8 @@ const App = () => {
         plannerModel: config.plannerModel,
         soraModel: config.soraModel,
         videoSize: config.videoSize,
+        videoSeconds: Number(config.videoSeconds) || 8,
+        maxSteps: Number(config.maxSteps) || 10,
         basePrompt: config.basePrompt,
       };
       const { data } = await api.post("/api/session", payload);

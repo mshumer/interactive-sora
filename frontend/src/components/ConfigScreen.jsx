@@ -25,6 +25,8 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
     plannerModel: "gpt-5",
     soraModel: "sora-2",
     videoSize: "1280x720",
+    videoSeconds: 8,
+    maxSteps: 10,
     basePrompt:
       "A cozy fantasy village at dusk, with glowing lanterns, narrow cobblestone streets, and a mysterious whisper about an ancient forest relic.",
   });
@@ -44,7 +46,8 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const nextValue = event.target.type === "number" ? Number(value) : value;
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
     if (name === "apiKey" && typeof window !== "undefined") {
       window.localStorage.setItem("sora_cyoa_api_key", value);
     }
@@ -138,6 +141,26 @@ const ConfigScreen = ({ onSubmit, isSubmitting, error, apiBaseUrl }) => {
                     <option value="1920x1080">1920 × 1080</option>
                     <option value="720x1280">720 × 1280</option>
                   </select>
+                </label>
+                <label className="field">
+                  <span>Clip duration (seconds)</span>
+                  <select name="videoSeconds" value={form.videoSeconds} onChange={handleChange}>
+                    <option value={4}>4s</option>
+                    <option value={8}>8s</option>
+                    <option value={12}>12s</option>
+                    <option value={24}>24s</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Follow-up scenes (max)</span>
+                  <input
+                    name="maxSteps"
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={form.maxSteps}
+                    onChange={handleChange}
+                  />
                 </label>
               </div>
 
